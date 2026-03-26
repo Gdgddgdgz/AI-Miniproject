@@ -91,22 +91,27 @@ export const api = {
   // ── Download ──────────────────────────────────────────────────────────
   // Uses axios so the auth header is sent correctly (browser <a> can't send headers)
   async downloadModel() {
-    const token = localStorage.getItem('token');
-    const response = await apiInstance.get('/download-model', {
-      responseType: 'blob',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    // Auto-trigger browser save dialog
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    const disposition = response.headers['content-disposition'] || '';
-    const match = disposition.match(/filename="?([^"]+)"?/);
-    link.href = url;
-    link.setAttribute('download', match ? match[1] : 'model.pkl');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await apiInstance.get('/download-model', {
+        responseType: 'blob',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      // Auto-trigger browser save dialog
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      const disposition = response.headers['content-disposition'] || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      link.href = url;
+      link.setAttribute('download', match ? match[1] : 'model.pkl');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to download model: " + (err.response?.data?.detail || err.message));
+      console.error(err);
+    }
   },
 
   // ── Dashboard ─────────────────────────────────────────────────────────

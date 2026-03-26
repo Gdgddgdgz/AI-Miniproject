@@ -32,6 +32,7 @@ app.add_middleware(
     allow_credentials=False, # Must be False when origin is "*"
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 # ---------------------------------------------------------------------------
