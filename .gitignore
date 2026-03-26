@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.venv/
+.env
+
+# Node
+node_modules/
+dist/
+build/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Models / Temp Data
+dummy_dataset.csv
+backend/data/*.json
+backend/data/*.pkl
+backend/users.json
+backend/model_history.json
+backend/dataset/
+backend/tmp/
+
+# OS Files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,338 @@
+import React, { useState } from 'react';
+import { useAppContext } from '../../context/AppContext';
+import './adv-settings.css';
+
+
+// ── Icon helpers ──────────────────────────────────────────────────────────────
+const Icon = ({ d, cls = 'w-4 h-4' }) => (
+  <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={d} />
+  </svg>
+);
+
+const ICONS = {
+  features:    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+  impute:      'M4 7h16M4 12h8m-8 5h16',
+  scale:       'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3',
+  tuning:      'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4',
+  cv:          'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+  metric:      'M13 10V3L4 14h7v7l9-11h-7z',
+  seed:        'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+  chevron:     'M19 9l-7 7-7-7',
+  cog:         'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
+};
+
+// ── Section card with left accent color ──────────────────────────────────────
+const Section = ({ accent, iconD, title, description, children }) => (
+  <div className="adv-section" style={{ '--accent': accent }}>
+    <div className="adv-section-header">
+      <div className="adv-section-icon" style={{ background: `${accent}22`, color: accent }}>
+        <Icon d={iconD} cls="w-4 h-4" />
+      </div>
+      <div>
+        <p className="adv-section-title">{title}</p>
+        <p className="adv-section-desc">{description}</p>
+      </div>
+    </div>
+    <div className="adv-section-body">{children}</div>
+  </div>
+);
+
+// ── Labelled control wrapper ──────────────────────────────────────────────────
+const Field = ({ label, hint, children }) => (
+  <div className="adv-field">
+    <label className="adv-field-label">{label}</label>
+    {hint && <p className="adv-field-hint">{hint}</p>}
+    {children}
+  </div>
+);
+
+// ── Toggle switch ─────────────────────────────────────────────────────────────
+const Toggle = ({ checked, onChange, activeColor = '#6366f1' }) => (
+  <button
+    onClick={onChange}
+    style={checked ? { background: activeColor } : {}}
+    className={`adv-toggle${checked ? ' adv-toggle-on' : ''}`}
+  >
+    <span className={`adv-toggle-knob${checked ? ' adv-toggle-knob-on' : ''}`} />
+  </button>
+);
+
+// ── Select ────────────────────────────────────────────────────────────────────
+const Select = ({ value, onChange, children }) => (
+  <select className="adv-select" value={value} onChange={e => onChange(e.target.value)}>
+    {children}
+  </select>
+);
+
+// ── Number input ──────────────────────────────────────────────────────────────
+const NumInput = ({ value, onChange, min, max }) => (
+  <input
+    type="number"
+    className="adv-input"
+    value={value}
+    min={min}
+    max={max}
+    onChange={e => onChange(parseInt(e.target.value, 10))}
+  />
+);
+
+const AdvancedSettings = () => {
+  const { advancedConfig, setAdvancedConfig, targetColumn, columns, problemType } = useAppContext();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const featureColumns = columns.filter(c => c !== targetColumn);
+
+  const set = (key, value) => {
+    setAdvancedConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const isThorough = advancedConfig.optimization_mode === 'thorough';
+
+  const toggleFeature = (col) => {
+    const dropped = advancedConfig.features_to_drop || [];
+    if (dropped.includes(col)) {
+      set('features_to_drop', dropped.filter(c => c !== col));
+    } else {
+      set('features_to_drop', [...dropped, col]);
+    }
+  };
+
+  const droppedCount = (advancedConfig.features_to_drop || []).length;
+
+  return (
+    <>
+      <div className="w-full max-w-4xl mx-auto mb-8">
+        {/* ── Toggle button ── */}
+        <button className="adv-toggle-btn" onClick={() => setIsOpen(!isOpen)}>
+          <Icon d={ICONS.cog} cls="w-4 h-4 cog-icon" />
+          Advanced Engine Settings
+          {droppedCount > 0 && (
+            <span className="badge">{droppedCount} col{droppedCount > 1 ? 's' : ''} hidden</span>
+          )}
+          <span style={{ marginLeft: droppedCount > 0 ? 0 : 'auto' }}>
+            <Icon d={ICONS.chevron} cls={`adv-chevron w-4 h-4${isOpen ? ' open' : ''}`} />
+          </span>
+        </button>
+
+        {/* ── Panel ── */}
+        {isOpen && (
+          <div className="adv-panel">
+            {/* Header bar */}
+            <div className="adv-panel-header">
+              <Icon d={ICONS.cog} cls="w-5 h-5" style={{ color: '#818cf8' }} />
+              <div>
+                <div className="adv-panel-header-title">⚙ Advanced Configuration</div>
+                <div className="adv-panel-header-sub">Fine-tune every aspect of the training pipeline</div>
+              </div>
+            </div>
+
+            {/* Main grid */}
+            <div className="adv-grid">
+
+              {/* 1 ─ Feature Selection */}
+              <Section
+                accent="#8b5cf6"
+                iconD={ICONS.features}
+                title="Feature Selection"
+                description="Uncheck columns the AI should ignore — e.g. IDs, names, or any column not useful for prediction."
+              >
+                {featureColumns.length === 0 ? (
+                  <p className="adv-feat-empty">Select a target column first.</p>
+                ) : (
+                  <div className="adv-feature-list">
+                    {featureColumns.map(col => {
+                      const dropped = (advancedConfig.features_to_drop || []).includes(col);
+                      return (
+                        <label key={col} className="adv-feat-row">
+                          <input
+                            type="checkbox"
+                            checked={!dropped}
+                            onChange={() => toggleFeature(col)}
+                          />
+                          <span style={dropped ? { textDecoration: 'line-through', color: '#475569' } : {}}>{col}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </Section>
+
+              {/* 2 ─ Missing Value Imputation */}
+              <Section
+                accent="#f59e0b"
+                iconD={ICONS.impute}
+                title="Missing Value Imputation"
+                description="How to handle blank / NaN cells in your dataset before training begins."
+              >
+                <Field
+                  label="Strategy"
+                  hint="Mean/Median fill is safest for numeric data. Drop rows removes any row with a blank cell."
+                >
+                  <Select
+                    value={advancedConfig.imputation_strategy}
+                    onChange={v => set('imputation_strategy', v)}
+                  >
+                    <option value="mean">Fill with Mean (numerical) / Mode (text)</option>
+                    <option value="median">Fill with Median — robust to outliers</option>
+                    <option value="most_frequent">Fill with Most Frequent value</option>
+                    <option value="zero">Fill with Zeros</option>
+                    <option value="drop">Drop Rows containing any blank</option>
+                  </Select>
+                </Field>
+              </Section>
+
+              {/* 3 ─ Data Scaling */}
+              <Section
+                accent="#10b981"
+                iconD={ICONS.scale}
+                title="Data Scaling / Normalization"
+                description="Rescale numerical features so no single column dominates the model — crucial for KNN and neural-style methods."
+              >
+                <Field
+                  label="Scaling Method"
+                  hint="StandardScaler centres around 0. MinMax squeezes everything to 0–1. Tree models don't need this."
+                >
+                  <Select
+                    value={advancedConfig.scaling}
+                    onChange={v => set('scaling', v)}
+                  >
+                    <option value="none">No Scaling (default — good for trees)</option>
+                    <option value="standard">StandardScaler — Z-Score normalisation</option>
+                    <option value="minmax">MinMaxScaler — map to [0, 1] range</option>
+                  </Select>
+                </Field>
+              </Section>
+
+              {/* 4 ─ Hyperparameter Optimisation */}
+              <Section
+                accent="#6366f1"
+                iconD={ICONS.tuning}
+                title="Hyperparameter Optimisation"
+                description="Run Randomized Search CV to find the best model parameters — more accurate, but takes longer."
+              >
+                <div className="adv-tuning-row">
+                  <div>
+                    <p className="adv-tuning-label">Thorough Tuning</p>
+                    <p className="adv-tuning-sub">
+                      {isThorough ? 'Grid/Random Search active — finding optimal params' : 'Fast training — uses default hyperparameters'}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className={`adv-mode-badge ${isThorough ? 'thorough' : 'fast'}`}>
+                      {isThorough ? 'Thorough' : 'Fast'}
+                    </span>
+                    <Toggle
+                      checked={isThorough}
+                      onChange={() => set('optimization_mode', isThorough ? 'fast' : 'thorough')}
+                      activeColor="#6366f1"
+                    />
+                  </div>
+                </div>
+                {isThorough && (
+                  <p style={{ fontSize: 10, color: '#f59e0b', marginTop: 8, paddingLeft: 4 }}>
+                    ⚠ Training will take longer. Best for final production models.
+                  </p>
+                )}
+              </Section>
+
+              {/* 5 ─ Cross-Validation Folds */}
+              <Section
+                accent="#ec4899"
+                iconD={ICONS.cv}
+                title="Cross-Validation Folds (K-Fold)"
+                description="Split training data into K subsets and rotate through them. A higher K gives more reliable accuracy scores."
+              >
+                <Field
+                  label="Number of Folds (K)"
+                  hint="5-fold is standard. 10-fold is more precise but slower. Only used when Thorough Tuning is on."
+                >
+                  <NumInput
+                    value={advancedConfig.cv_folds}
+                    onChange={v => set('cv_folds', v)}
+                    min={2}
+                    max={15}
+                  />
+                </Field>
+                <div style={{ marginTop: 8, fontSize: 10, color: '#94a3b8', padding: '6px 8px', background: '#ec489910', borderRadius: 7, border: '1px solid #ec489920' }}>
+                  Current: <strong style={{ color: '#f9a8d4' }}>K = {advancedConfig.cv_folds}</strong> — model will be validated
+                  on <strong style={{ color: '#f9a8d4' }}>{advancedConfig.cv_folds}</strong> different data slices.
+                </div>
+              </Section>
+
+              {/* 6 ─ Primary Optimisation Metric */}
+              <Section
+                accent="#f97316"
+                iconD={ICONS.metric}
+                title="Primary Optimisation Metric"
+                description="Tell the AI what to optimise for. In fraud detection, Recall is critical. For balanced datasets, Accuracy works well."
+              >
+                <Field
+                  label="Metric"
+                  hint={
+                    problemType === 'classification'
+                      ? 'Recall = catch everything (fraud, cancer). Precision = avoid false alarms. F1 = balance.'
+                      : 'R² measures explained variance. RMSE measures average prediction error in original units.'
+                  }
+                >
+                  <Select
+                    value={advancedConfig.optimization_metric}
+                    onChange={v => set('optimization_metric', v)}
+                  >
+                    <option value="auto">Auto — let the AI decide</option>
+                    {problemType !== 'regression' ? (
+                      <>
+                        <option value="accuracy">Accuracy — overall correct predictions</option>
+                        <option value="f1">F1 Score — precision + recall balance</option>
+                        <option value="recall">Recall — minimize false negatives (fraud, medical)</option>
+                        <option value="precision">Precision — minimize false alarms</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="r2">R-Squared — goodness of fit (higher = better)</option>
+                        <option value="rmse">RMSE — root mean squared error (lower = better)</option>
+                        <option value="mae">MAE — mean absolute error (lower = better)</option>
+                      </>
+                    )}
+                  </Select>
+                </Field>
+              </Section>
+
+              {/* 7 ─ Random Seed — full width */}
+              <div className="adv-full-row">
+                <Section
+                  accent="#64748b"
+                  iconD={ICONS.seed}
+                  title="Reproducibility Seed"
+                  description="A fixed random seed ensures you get the exact same results every run. Change this to experiment with different random splits."
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <Field
+                      label="Random Seed"
+                      hint="Default is 42 (conventional). Any integer works."
+                    >
+                      <NumInput
+                        value={advancedConfig.random_seed}
+                        onChange={v => set('random_seed', v)}
+                        min={0}
+                        max={99999}
+                      />
+                    </Field>
+                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                      <div style={{ padding: '8px 12px', background: '#64748b10', borderRadius: 9, border: '1px solid #64748b30', fontSize: 10, color: '#94a3b8', width: '100%' }}>
+                        🎲 Same seed → same train/test split → identical results every time. Useful for comparing models fairly.
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+              </div>
+
+            </div>{/* /adv-grid */}
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+export default AdvancedSettings;
