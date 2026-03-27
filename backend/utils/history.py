@@ -6,7 +6,7 @@ Persists model results per user as a flat JSON list.
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "model_history.json")
 
@@ -54,7 +54,7 @@ def save_model_to_history(
     history = get_history()
     new_entry = {
         "id": str(uuid.uuid4()),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "username": username,
         "model_name": model_name,
         "target_column": target,
