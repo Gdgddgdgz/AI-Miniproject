@@ -5,6 +5,18 @@ model_selector.py – Detect problem type and recommend the best model.
 import pandas as pd
 import numpy as np
 
+try:
+    import xgboost  # noqa: F401
+    HAS_XGB = True
+except ImportError:
+    HAS_XGB = False
+
+try:
+    import lightgbm  # noqa: F401
+    HAS_LGBM = True
+except ImportError:
+    HAS_LGBM = False
+
 
 def detect_problem_type(df: pd.DataFrame, target_col: str) -> str:
     """
@@ -31,18 +43,29 @@ def detect_problem_type(df: pd.DataFrame, target_col: str) -> str:
 def get_model_list(problem_type: str) -> list:
     """Return the list of available model names for the given problem type."""
     if problem_type == "classification":
-        return [
+        models = [
             "Logistic Regression",
             "Decision Tree",
             "Random Forest",
             "KNN",
         ]
+        if HAS_XGB:
+            models.append("XGBoost")
+        if HAS_LGBM:
+            models.append("LightGBM")
+        return models
     else:
-        return [
+        models = [
             "Linear Regression",
             "Decision Tree Regressor",
             "Random Forest Regressor",
+            "KNN Regressor",
         ]
+        if HAS_XGB:
+            models.append("XGBoost Regressor")
+        if HAS_LGBM:
+            models.append("LightGBM Regressor")
+        return models
 
 
 def get_best_model(comparison: list) -> dict:

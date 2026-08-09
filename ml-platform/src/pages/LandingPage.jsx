@@ -41,9 +41,6 @@ const LandingPage = () => {
           <Link to="/upload" className="w-full sm:w-auto px-8 py-4 bg-[#635bff] text-white rounded-xl font-bold text-lg shadow-[0_4px_14px_0_rgba(99,91,255,0.39)] hover:shadow-[0_6px_20px_rgba(99,91,255,0.23)] hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2">
             Upload Dataset <span className="text-xl">🚀</span>
           </Link>
-          <button className="w-full sm:w-auto px-8 py-4 bg-white text-[#1a1f36] border border-[#e3e8ee] rounded-xl font-bold text-lg hover:bg-[#f7f9fc] hover:border-[#d1d5db] transition-all duration-200 shadow-sm">
-            View Demo
-          </button>
         </div>
         
         {/* Visual Mockup Area */}

@@ -15,47 +15,47 @@ from utils.auth import get_current_user
 router = APIRouter()
 
 
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB limit
+
 @router.post("/upload", summary="Upload a CSV dataset")
 async def upload_dataset(
     file: UploadFile = File(...),
     current_user: str = Depends(get_current_user),
 ):
     """
-    Upload a CSV file. Stores it in the user's isolated session.
-
-    Returns
-    -------
-    - filename
-    - shape: [n_rows, n_cols]
-    - columns: list of column names
-    - dtypes: {column: dtype_string}
-    - preview: first 20 rows as list of dicts
+    Upload a CSV file. Stores it in the user's isolated session with security checks.
     """
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
 
     contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Uploaded file exceeds maximum limit of 50MB.")
+
     if not contents:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
     try:
         df = pd.read_csv(io.BytesIO(contents))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse CSV: {str(e)}")
+    except Exception:
+        try:
+            df = pd.read_csv(io.BytesIO(contents), encoding="latin1")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to parse CSV file: {str(e)}")
 
     if df.empty:
         raise HTTPException(status_code=400, detail="The uploaded CSV file contains no data rows.")
 
     if len(df.columns) < 2:
-        raise HTTPException(status_code=400, detail="Dataset must have at least 2 columns.")
+        raise HTTPException(status_code=400, detail="Dataset must have at least 2 columns (features + target).")
 
-    # Persist in user-specific session
     session = get_session(current_user)
     session["raw_df"] = df
     session["processed_df"] = None
     session["trained_model"] = None
     session["target_column"] = None
     session["problem_type"] = None
+    session["raw_feature_columns"] = None
 
     return {
         "filename": file.filename,
@@ -64,6 +64,7 @@ async def upload_dataset(
         "dtypes": column_dtypes(df),
         "preview": df_to_records(df, max_rows=20),
     }
+
 
 
 @router.post("/reset", summary="Reset the current user's project session")

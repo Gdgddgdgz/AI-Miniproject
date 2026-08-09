@@ -73,6 +73,11 @@ export const api = {
     });
   },
 
+  // ── Inference ─────────────────────────────────────────────────────────
+  predict(features) {
+    return apiInstance.post('/predict', { features });
+  },
+
   // ── Auth ──────────────────────────────────────────────────────────────
   login(username, password) {
     // OAuth2PasswordRequestForm requires application/x-www-form-urlencoded
@@ -89,7 +94,6 @@ export const api = {
   },
 
   // ── Download ──────────────────────────────────────────────────────────
-  // Uses axios so the auth header is sent correctly (browser <a> can't send headers)
   async downloadModel() {
     try {
       const token = localStorage.getItem('token');
@@ -97,13 +101,12 @@ export const api = {
         responseType: 'blob',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      // Auto-trigger browser save dialog
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       const disposition = response.headers['content-disposition'] || '';
       const match = disposition.match(/filename="?([^"]+)"?/);
       link.href = url;
-      link.setAttribute('download', match ? match[1] : 'model.pkl');
+      link.setAttribute('download', match ? match[1] : 'model_pipeline.joblib');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -119,3 +122,4 @@ export const api = {
     return apiInstance.get('/dashboard/models');
   },
 };
+

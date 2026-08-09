@@ -17,7 +17,7 @@ const UploadPage = () => {
             Train models without writing code
           </h1>
           <p className="text-[#4f566b] text-base max-w-xl mx-auto leading-relaxed">
-            Upload your dataset, configure parameters visually, and let Aura engine build high-performance machine learning models instantly.
+            Upload your dataset, configure parameters visually, and let our engine build high-performance machine learning models instantly.
           </p>
         </div>
       )}

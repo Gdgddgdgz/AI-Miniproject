@@ -28,59 +28,69 @@ def get_column_types(df: pd.DataFrame) -> Tuple[List[str], List[str]]:
 
 def build_preprocessor(num_cols: List[str], cat_cols: List[str], imputation_strategy: str = "mean", scaling: str = "none") -> ColumnTransformer:
     """
-    Build a sklearn ColumnTransformer that:
+    Build an unfitted sklearn ColumnTransformer that:
       - Imputes + scales numerical columns.
       - Imputes + one-hot-encodes categorical columns.
     """
-    numeric_steps = []
-    if imputation_strategy != "drop":
-        # simple imputer doesn't accept "drop", it's handled in pandas before this
-        strat = imputation_strategy if imputation_strategy in ["mean", "median", "most_frequent"] else "mean"
-        if imputation_strategy == "zero":
-            numeric_steps.append(("imputer", SimpleImputer(strategy="constant", fill_value=0)))
-        else:
-            numeric_steps.append(("imputer", SimpleImputer(strategy=strat)))
-            
-    if scaling == "standard":
-        numeric_steps.append(("scaler", StandardScaler()))
-    elif scaling == "minmax":
-        numeric_steps.append(("scaler", MinMaxScaler()))
-        
-    numeric_transformer = Pipeline(steps=numeric_steps) if numeric_steps else "passthrough"
-
-    cat_strat = "most_frequent" if imputation_strategy != "zero" else "constant"
-    cat_steps = []
-    if imputation_strategy != "drop":
-        cat_steps.append(("imputer", SimpleImputer(strategy=cat_strat, fill_value="missing" if cat_strat=="constant" else None)))
-    cat_steps.append(("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)))
+    transformers = []
     
-    categorical_transformer = Pipeline(steps=cat_steps)
+    if num_cols:
+        numeric_steps = []
+        if imputation_strategy != "drop":
+            strat = imputation_strategy if imputation_strategy in ["mean", "median", "most_frequent"] else "mean"
+            if imputation_strategy == "zero":
+                numeric_steps.append(("imputer", SimpleImputer(strategy="constant", fill_value=0)))
+            else:
+                numeric_steps.append(("imputer", SimpleImputer(strategy=strat)))
+                
+        if scaling == "standard":
+            numeric_steps.append(("scaler", StandardScaler()))
+        elif scaling == "minmax":
+            numeric_steps.append(("scaler", MinMaxScaler()))
+            
+        numeric_transformer = Pipeline(steps=numeric_steps) if numeric_steps else "passthrough"
+        transformers.append(("num", numeric_transformer, num_cols))
 
-    preprocessor = ColumnTransformer(transformers=[
-        ("num", numeric_transformer, num_cols),
-        ("cat", categorical_transformer, cat_cols),
-    ])
+    if cat_cols:
+        cat_strat = "most_frequent" if imputation_strategy != "zero" else "constant"
+        cat_steps = []
+        if imputation_strategy != "drop":
+            cat_steps.append(("imputer", SimpleImputer(strategy=cat_strat, fill_value="missing" if cat_strat == "constant" else None)))
+        cat_steps.append(("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)))
+        categorical_transformer = Pipeline(steps=cat_steps)
+        transformers.append(("cat", categorical_transformer, cat_cols))
 
-    return preprocessor
+    if not transformers:
+        raise ValueError("Dataset has no numerical or categorical feature columns.")
+
+    return ColumnTransformer(transformers=transformers)
 
 
-def preprocess_dataframe(
+def get_feature_names_from_preprocessor(preprocessor: ColumnTransformer, num_cols: List[str], cat_cols: List[str]) -> List[str]:
+    """Extract feature names after fitting ColumnTransformer."""
+    feature_names = []
+    if num_cols and "num" in preprocessor.named_transformers_:
+        feature_names.extend(num_cols)
+    if cat_cols and "cat" in preprocessor.named_transformers_:
+        try:
+            cat_trans = preprocessor.named_transformers_["cat"]
+            ohe = cat_trans.named_steps["onehot"] if isinstance(cat_trans, Pipeline) else cat_trans
+            cat_names = ohe.get_feature_names_out(cat_cols).tolist()
+            feature_names.extend(cat_names)
+        except Exception:
+            feature_names.extend([f"{c}_encoded" for c in cat_cols])
+    return feature_names
+
+
+def prepare_features_and_target(
     df: pd.DataFrame, 
     target_col: str, 
     features_to_drop: List[str] = None,
     imputation_strategy: str = "mean",
-    scaling: str = "none"
 ):
     """
-    Full preprocessing pipeline.
-
-    Returns
-    -------
-    X_processed : np.ndarray
-    y            : pd.Series  (raw target values)
-    feature_names: list[str]  (column names after encoding)
-    preprocessor : fitted ColumnTransformer
-    label_encoder: fitted LabelEncoder | None  (only for classification targets)
+    Extract X (raw features dataframe) and y (processed target series), plus column dtypes.
+    Performs dropna if imputation_strategy is 'drop'.
     """
     df = df.copy()
 
@@ -88,39 +98,35 @@ def preprocess_dataframe(
         cols_to_drop = [c for c in features_to_drop if c in df.columns and c != target_col]
         df = df.drop(columns=cols_to_drop)
 
+    # Drop target nulls
+    df = df.dropna(subset=[target_col])
+
     if imputation_strategy == "drop":
         df = df.dropna()
 
-    # Separate features / target
     X = df.drop(columns=[target_col])
     y = df[target_col]
 
-    num_cols, cat_cols = get_column_types(X)
-
-    preprocessor = build_preprocessor(num_cols, cat_cols, imputation_strategy, scaling)
-    X_processed = preprocessor.fit_transform(X)
-
-    # Build feature names after one-hot encoding
-    ohe_feature_names = []
-    if cat_cols:
-        ohe: OneHotEncoder = preprocessor.named_transformers_["cat"]["onehot"]
-        ohe_feature_names = ohe.get_feature_names_out(cat_cols).tolist()
-    feature_names = num_cols + ohe_feature_names
-
-    # Encode the target only for classification (non-numeric dtype)
+    # Encode non-numeric targets for classification
     label_encoder = None
-    if y.dtype == object or str(y.dtype) == "category":
+    if y.dtype == object or str(y.dtype) == "category" or not np.issubdtype(y.dtype, np.number):
         label_encoder = LabelEncoder()
-        y = pd.Series(label_encoder.fit_transform(y), name=target_col)
+        y = pd.Series(label_encoder.fit_transform(y.astype(str)), name=target_col, index=X.index)
 
-    return X_processed, y, feature_names, preprocessor, label_encoder
+    num_cols, cat_cols = get_column_types(X)
+    return X, y, num_cols, cat_cols, label_encoder
 
 
 def preprocess_for_preview(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
     """
-    Return a DataFrame preview of the preprocessed data (for the /preprocess endpoint).
+    Return a preview of the preprocessed data (for the /preprocess endpoint) by fitting on sample data.
     """
-    X_processed, y, feature_names, _, _ = preprocess_dataframe(df, target_col)
-    processed_df = pd.DataFrame(X_processed, columns=feature_names)
+    X, y, num_cols, cat_cols, _ = prepare_features_and_target(df, target_col)
+    preprocessor = build_preprocessor(num_cols, cat_cols)
+    X_processed = preprocessor.fit_transform(X)
+    feature_names = get_feature_names_from_preprocessor(preprocessor, num_cols, cat_cols)
+    
+    processed_df = pd.DataFrame(X_processed, columns=feature_names, index=X.index)
     processed_df[target_col] = y.values
     return processed_df
+

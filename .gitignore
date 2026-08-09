@@ -24,6 +24,7 @@ yarn-error.log*
 dummy_dataset.csv
 backend/data/*.json
 backend/data/*.pkl
+backend/data/automl_studio.db
 backend/users.json
 backend/model_history.json
 backend/dataset/

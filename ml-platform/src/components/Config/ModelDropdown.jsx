@@ -1,8 +1,8 @@
 import React from 'react';
 import { useAppContext } from '../../context/AppContext';
 
-const CLASSIFICATION_MODELS = ['Logistic Regression', 'Decision Tree', 'Random Forest', 'KNN'];
-const REGRESSION_MODELS = ['Linear Regression', 'Decision Tree Regressor', 'Random Forest Regressor'];
+const CLASSIFICATION_MODELS = ['Logistic Regression', 'Decision Tree', 'Random Forest', 'KNN', 'XGBoost', 'LightGBM'];
+const REGRESSION_MODELS = ['Linear Regression', 'Decision Tree Regressor', 'Random Forest Regressor', 'KNN Regressor', 'XGBoost Regressor', 'LightGBM Regressor'];
 
 const ModelDropdown = () => {
   const { problemType, selectedModel, setSelectedModel, targetColumn, setProblemType } = useAppContext();

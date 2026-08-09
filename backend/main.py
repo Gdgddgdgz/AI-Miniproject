@@ -11,14 +11,14 @@ The /auth/* endpoints are intentionally public.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import upload, analyze, preprocess, train, download, dashboard, auth
+from routes import upload, analyze, preprocess, train, download, dashboard, auth, predict
 
 app = FastAPI(
     title="AutoML Studio API",
     description=(
         "No-Code Machine Learning Platform. "
         "Upload a CSV, configure ML settings, train & compare models, "
-        "download trained models, and track your history."
+        "run live predictions, download trained pipelines, and track history."
     ),
     version="2.0.0",
 )
@@ -44,6 +44,7 @@ app.include_router(upload.router,     tags=["Dataset"])
 app.include_router(analyze.router,    tags=["Dataset"])
 app.include_router(preprocess.router, tags=["Preprocessing"])
 app.include_router(train.router,      tags=["Training"])
+app.include_router(predict.router,    tags=["Inference"])
 app.include_router(download.router,   tags=["Export"])
 app.include_router(dashboard.router,  tags=["Dashboard"])
 
@@ -52,3 +53,4 @@ app.include_router(dashboard.router,  tags=["Dashboard"])
 def root():
     """Health check – confirms the API is running."""
     return {"status": "ok", "message": "AutoML Studio API v2.0 is running."}
+

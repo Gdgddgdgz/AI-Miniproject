@@ -96,8 +96,17 @@ def run_tests():
     assert len(res.content) > 0, "Downloaded model file is empty"
     print("    Download successful.")
     
+    # 11. Live Inference /predict
+    print("--> Testing /predict...")
+    predict_payload = {"features": {"feature1": 0.42, "feature2": 15}}
+    res = session.post(f"{BASE_URL}/predict", json=predict_payload)
+    assert res.status_code == 200, f"Predict failed: {res.text}"
+    assert "prediction" in res.json(), "Prediction response missing prediction key"
+    print(f"    Predict successful, received prediction: {res.json()['prediction']}")
+
     print("\n✅ All APIs and functionalities are working perfectly!")
     return True
+
 
 if __name__ == "__main__":
     try:

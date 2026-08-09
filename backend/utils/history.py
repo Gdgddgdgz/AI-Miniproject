@@ -1,46 +1,38 @@
 """
 history.py - Model training history tracker.
-Persists model results per user as a flat JSON list.
+Persists model results per user in SQLite database.
 """
 
-import json
-import os
 import uuid
-from datetime import datetime, timezone
-
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "model_history.json")
-
-
-class NumpyEncoder(json.JSONEncoder):
-    """Custom JSON encoder that handles NumPy scalars."""
-    def default(self, obj):
-        if hasattr(obj, "item"):  # numpy scalar
-            return obj.item()
-        if hasattr(obj, "tolist"):  # numpy array
-            return obj.tolist()
-        return super().default(obj)
+from typing import List, Dict, Any
+from utils.db import get_db_session, ModelHistoryRecord
 
 
-def _ensure_history_file():
-    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-    if not os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "w") as f:
-            json.dump([], f)
-
-
-def get_history() -> list:
-    """Load the full history list from disk."""
-    _ensure_history_file()
-    with open(HISTORY_FILE, "r") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return []
-
-
-def get_user_history(username: str) -> list:
-    """Return the history records for a specific user."""
-    return [entry for entry in get_history() if entry.get("username") == username]
+def get_user_history(username: str) -> List[Dict[str, Any]]:
+    """Return history records for a specific user from SQLite."""
+    db = get_db_session()
+    try:
+        records = (
+            db.query(ModelHistoryRecord)
+            .filter(ModelHistoryRecord.username == username)
+            .order_by(ModelHistoryRecord.timestamp.desc())
+            .all()
+        )
+        return [
+            {
+                "id": rec.id,
+                "timestamp": rec.timestamp.isoformat() if rec.timestamp else "",
+                "username": rec.username,
+                "model_name": rec.model_name,
+                "target_column": rec.target_column,
+                "problem_type": rec.problem_type,
+                "metrics": rec.metrics,
+                "parameters": rec.parameters,
+            }
+            for rec in records
+        ]
+    finally:
+        db.close()
 
 
 def save_model_to_history(
@@ -49,19 +41,41 @@ def save_model_to_history(
     metrics: dict,
     params: dict,
     username: str = "anonymous",
+    problem_type: str = "unknown",
 ) -> dict:
-    """Append a new training record and persist to disk."""
-    history = get_history()
-    new_entry = {
-        "id": str(uuid.uuid4()),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "username": username,
-        "model_name": model_name,
-        "target_column": target,
-        "metrics": metrics,
-        "parameters": params,
-    }
-    history.insert(0, new_entry)  # newest first
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(history, f, indent=4, cls=NumpyEncoder)
-    return new_entry
+    """Append a new training record to SQLite."""
+    db = get_db_session()
+    try:
+        rec_id = str(uuid.uuid4())
+        primary_score = metrics.get("f1_score") if "f1_score" in metrics else metrics.get("r2", 0.0)
+        
+        record = ModelHistoryRecord(
+            id=rec_id,
+            username=username,
+            model_name=model_name,
+            target_column=target,
+            problem_type=problem_type,
+            primary_score=float(primary_score) if primary_score is not None else 0.0,
+            metrics=metrics,
+            parameters=params,
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        
+        return {
+            "id": record.id,
+            "timestamp": record.timestamp.isoformat() if record.timestamp else "",
+            "username": record.username,
+            "model_name": record.model_name,
+            "target_column": record.target_column,
+            "metrics": record.metrics,
+            "parameters": record.parameters,
+        }
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to save model history to database: {e}")
+        return {}
+    finally:
+        db.close()
+
