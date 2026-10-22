@@ -8,10 +8,10 @@ const FileUploader = () => {
   const [error, setError] = useState(null);
   const { setDatasetInfo, setPreviewData, setColumns, resetApp } = useAppContext();
 
-  const handleFile = async (file) => {
+  const handleFile = useCallback(async (file) => {
     if (!file) return;
-    if (!file.name.endsWith('.csv')) {
-      setError('Please upload a valid CSV file.');
+    if (!/\.(csv|zip)$/i.test(file.name)) {
+      setError('Please upload a CSV or a ZIP containing one CSV and its images.');
       return;
     }
     
@@ -28,6 +28,8 @@ const FileUploader = () => {
         shape: data.shape,
         badges: data.dtypes,
         dtypes: data.dtypes,
+        imageColumns: data.image_columns || [],
+        imageMap: data.image_map || {},
       });
       setPreviewData(data.preview);
       setColumns(data.columns);
@@ -37,7 +39,7 @@ const FileUploader = () => {
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [resetApp, setColumns, setDatasetInfo, setPreviewData]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
@@ -45,7 +47,7 @@ const FileUploader = () => {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFile(e.dataTransfer.files[0]);
     }
-  }, []);
+  }, [handleFile]);
 
   const onFileSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -76,11 +78,11 @@ const FileUploader = () => {
             </div>
             
             <h3 className="text-[#1a1f36] font-semibold text-lg mb-1">Click to upload or drag and drop</h3>
-            <p className="text-[#4f566b] text-sm">CSV files only. Maximum file size 50MB.</p>
+            <p className="text-[#4f566b] text-sm">CSV, or ZIP with one CSV and image files. Maximum upload size 50MB.</p>
             
             <input 
               type="file" 
-              accept=".csv" 
+              accept=".csv,.zip"
               className="hidden" 
               id="file-upload" 
               onChange={onFileSelect} 

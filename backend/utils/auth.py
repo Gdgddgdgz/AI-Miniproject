@@ -5,9 +5,8 @@ Handles JWT creation/decoding, password hashing, and user persistence.
 """
 
 import os
-import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
@@ -20,7 +19,9 @@ from fastapi.security import OAuth2PasswordBearer
 # ---------------------------------------------------------------------------
 from utils.db import get_db_session, User
 
-SECRET_KEY = os.getenv("SECRET_KEY", "automl-studio-super-secret-key-9988")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY must be set to a strong random value before starting the API.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
@@ -35,7 +36,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

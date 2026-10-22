@@ -6,7 +6,7 @@
 
 ## 📖 Table of Contents
 1. [Architectural Overview & Principles](#1-architectural-overview--principles)
-2. [Zero Data Leakage Engineering](#2-zero-data-leakage-engineering)
+2. [Leakage-Conscious Model Evaluation](#2-leakage-conscious-model-evaluation)
 3. [Machine Learning Pipeline & Model Registry](#3-machine-learning-pipeline--model-registry)
 4. [Database & Persistence Architecture](#4-database--persistence-architecture)
 5. [Inference Engine & Live Playground API](#5-inference-engine--live-playground-api)
@@ -20,27 +20,28 @@
 
 AutoML Studio follows a **decoupled client-server architecture**:
 
-* **Backend Services**: Built on **FastAPI (ASGI)** using asynchronous request handlers, custom Pydantic v2 validation models, and SQLAlchemy 2.0 ORM database persistence.
+* **Backend Services**: Built on FastAPI with Pydantic request validation and SQLAlchemy persistence for accounts and training history.
 * **Frontend Client**: Built on **React 19** with **Vite**, utilizing Axios interceptors for automatic JWT Bearer token attachment and centralized state management via React Context (`AppContext` & `AuthContext`).
 * **Machine Learning Engine**: Designed around modular Scikit-Learn `Pipeline` and `ColumnTransformer` constructs, combined with **XGBoost** and **LightGBM** gradient boosted decision trees.
 
 ---
 
-## 2. Zero Data Leakage Engineering
+## 2. Leakage-Conscious Model Evaluation
 
 In machine learning, **Data Leakage** occurs when information from outside the training dataset (such as test set statistics) is inadvertently used to fit preprocessors or train models.
 
 ### Problem in Naive Implementations:
 In basic implementations, functions like `StandardScaler.fit_transform(X)` or `SimpleImputer.fit_transform(X)` are called on the **entire dataset** prior to splitting into train and test sets. This leaks the mean, standard deviation, and categorical values of test samples into training, causing artificially inflated metrics.
 
-### AutoML Studio Solution:
+### Current implementation:
 1. Raw features ($X$) and target ($y$) are separated without modifying feature values.
 2. Dataset is split into $X_{\text{train}}, X_{\text{test}}, y_{\text{train}}, y_{\text{test}}$ using `split_data()`.
 3. An **unfitted** `ColumnTransformer` is created for numerical (imputation + scaling) and categorical (imputation + one-hot encoding) columns.
 4. A full `sklearn.pipeline.Pipeline` is assembled:
    $$\text{Pipeline} = \text{ColumnTransformer} \longrightarrow \text{Estimator}$$
 5. The pipeline is fitted **strictly on $X_{\text{train}}$** during `pipeline.fit(X_train, y_train)`.
-6. Evaluation metrics are computed strictly on predictions from $X_{\text{test}}$.
+6. Models are ranked by cross-validation scores on the training split. Holdout metrics are reported for the selected model using $X_{\text{test}}$. Scores vary with the split, dataset size, and chosen metric; this process does not guarantee generalization.
+7. Image reference columns are treated as display metadata and excluded from model features. The model does not analyze image pixels. A “top predicted item” is meaningful only for regression targets or numeric/ordered class labels.
 
 ---
 
@@ -68,7 +69,7 @@ AutoML Studio supports both **classification** and **regression** task auto-dete
 
 ## 4. Database & Persistence Architecture
 
-Data persistence is managed by **SQLAlchemy 2.0** connecting to an **SQLite** database (`backend/data/automl_studio.db`).
+Account and training-history persistence is managed by SQLAlchemy connecting to SQLite (`backend/data/automl_studio.db`). Uploaded datasets, images, and fitted pipelines live in a process-local memory session. They are lost on restart, and the app currently requires a single API process.
 
 ### Database Schema (ERD):
 
@@ -77,7 +78,7 @@ Data persistence is managed by **SQLAlchemy 2.0** connecting to an **SQLite** da
 |               users               |       |           model_history           |
 +-----------------------------------+       +-----------------------------------+
 | id (PK)         : String (UUID)   |       | id (PK)         : String (UUID)   |
-| username        : String (Unique) |       | username        : String (FK)     |
+| username        : String (Unique) |       | username        : String (indexed) |
 | hashed_password : String          |       | model_name      : String          |
 | created_at      : DateTime        |       | target_column   : String          |
 +-----------------------------------+       | problem_type    : String          |
@@ -116,7 +117,7 @@ The backend exposes a dedicated live prediction endpoint (`POST /predict`):
 
 ## 6. Model Serialization & Export Specifications
 
-Rather than exporting raw estimator objects via dangerous `pickle` files, AutoML Studio packages full pipelines using **Joblib**:
+AutoML Studio packages full pipelines using **Joblib**. Joblib uses pickle-based serialization, so load only exports from sources you trust:
 
 ```python
 export_package = {
@@ -135,7 +136,7 @@ joblib.dump(export_package, buffer)
 import joblib
 import pandas as pd
 
-# Load exported pipeline package
+# Load only a trusted exported pipeline package
 package = joblib.load("random_forest_pipeline.joblib")
 pipeline = package["pipeline"]
 
@@ -151,7 +152,7 @@ print("Prediction:", prediction)
 
 1. **File Upload Size Ceiling**: Enforces a 50MB maximum size limit per upload to prevent memory exhaustion DoS attacks.
 2. **Multi-Encoding Parser**: Tries `utf-8` and falls back to `latin1` to handle messy real-world CSV files without crashing.
-3. **Argon2id / Bcrypt Password Hashing**: Passwords hashed securely using `passlib` with salt prior to DB persistence.
+3. **Bcrypt Password Hashing**: Passwords are hashed with Passlib before database persistence.
 4. **JWT Expiration & Verification**: Access tokens signed using `HS256` with configurable expiration.
 
 ---
@@ -159,9 +160,9 @@ print("Prediction:", prediction)
 ## 8. End-to-End Workflow Walkthrough
 
 1. **User Auth**: Sign up/login to obtain JWT token.
-2. **Upload**: Post CSV dataset to `/upload`.
+2. **Upload**: Post a CSV, or a ZIP containing one CSV and associated images, to `/upload`.
 3. **Analyze**: View statistical summaries (null counts, dtypes, missing values) at `/analyze`.
 4. **Configure & Train**: Submit configuration to `/train` or `/compare`.
 5. **Evaluate**: Inspect accuracy, F1, precision, recall, confusion matrix, or R² / RMSE on the UI.
 6. **Playground Inference**: Test live custom inputs on the Interactive Live Inference Playground.
-7. **Export**: Download full `.joblib` model package for production deployment.
+7. **Export**: Download the fitted `.joblib` model package for trusted local use.

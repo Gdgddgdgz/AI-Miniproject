@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useAppContext } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 import UploadPage from './pages/UploadPage';
@@ -22,6 +22,12 @@ const ProtectedRoute = ({ children }) => {
 
 const Navbar = () => {
     const { isAuthenticated, logout } = useAuth();
+    const { resetApp } = useAppContext();
+    useEffect(() => {
+      const clearExpiredSession = () => resetApp();
+      window.addEventListener('auth:expired', clearExpiredSession);
+      return () => window.removeEventListener('auth:expired', clearExpiredSession);
+    }, [resetApp]);
     return (
         <header className="bg-white border-b border-[#e3e8ee] sticky top-0 z-50">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -49,7 +55,7 @@ const Navbar = () => {
                 <Link to="/upload" className="nav-link font-bold text-[#635bff] hover:text-[#00d4ff] transition-colors">Upload</Link>
                 <Link to="/dashboard" className="nav-link font-bold text-[#635bff] hover:text-[#00d4ff] transition-colors">Dashboard</Link>
                 <button 
-                  onClick={logout}
+                  onClick={() => { logout(); resetApp(); }}
                   className="px-5 py-2 rounded-xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-all border border-red-100"
                 >
                   Logout

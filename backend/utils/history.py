@@ -28,6 +28,7 @@ def get_user_history(username: str) -> List[Dict[str, Any]]:
                 "problem_type": rec.problem_type,
                 "metrics": rec.metrics,
                 "parameters": rec.parameters,
+                "primary_score": rec.primary_score,
             }
             for rec in records
         ]
@@ -42,12 +43,13 @@ def save_model_to_history(
     params: dict,
     username: str = "anonymous",
     problem_type: str = "unknown",
+    primary_score: float = None,
 ) -> dict:
     """Append a new training record to SQLite."""
     db = get_db_session()
     try:
         rec_id = str(uuid.uuid4())
-        primary_score = metrics.get("f1_score") if "f1_score" in metrics else metrics.get("r2", 0.0)
+        default_score = metrics.get("f1_score") if "f1_score" in metrics else metrics.get("r2", 0.0)
         
         record = ModelHistoryRecord(
             id=rec_id,
@@ -55,7 +57,7 @@ def save_model_to_history(
             model_name=model_name,
             target_column=target,
             problem_type=problem_type,
-            primary_score=float(primary_score) if primary_score is not None else 0.0,
+            primary_score=float(primary_score if primary_score is not None else default_score or 0.0),
             metrics=metrics,
             parameters=params,
         )
@@ -71,6 +73,7 @@ def save_model_to_history(
             "target_column": record.target_column,
             "metrics": record.metrics,
             "parameters": record.parameters,
+            "primary_score": record.primary_score,
         }
     except Exception as e:
         db.rollback()

@@ -31,7 +31,7 @@ const UploadPage = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#e3e8ee] pb-4">
             <div>
               <h2 className="text-2xl font-bold text-[#1a1f36]">{datasetInfo.filename}</h2>
-              <p className="text-[#4f566b] text-sm mt-1">Previewing the first 10 rows of your dataset.</p>
+              <p className="text-[#4f566b] text-sm mt-1">Previewing the first 10 rows of your dataset. Image columns are shown as thumbnails and excluded from model inputs.</p>
             </div>
             <button 
               onClick={() => navigate('/config')}

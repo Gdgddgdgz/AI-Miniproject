@@ -3,19 +3,7 @@ model_selector.py – Detect problem type and recommend the best model.
 """
 
 import pandas as pd
-import numpy as np
-
-try:
-    import xgboost  # noqa: F401
-    HAS_XGB = True
-except ImportError:
-    HAS_XGB = False
-
-try:
-    import lightgbm  # noqa: F401
-    HAS_LGBM = True
-except ImportError:
-    HAS_LGBM = False
+from ml.model_trainer import CLASSIFICATION_MODELS, REGRESSION_MODELS
 
 
 def detect_problem_type(df: pd.DataFrame, target_col: str) -> str:
@@ -29,12 +17,12 @@ def detect_problem_type(df: pd.DataFrame, target_col: str) -> str:
     """
     series = df[target_col]
 
-    if series.dtype == object or str(series.dtype) == "category":
+    if pd.api.types.is_object_dtype(series.dtype) or isinstance(series.dtype, pd.CategoricalDtype) or pd.api.types.is_bool_dtype(series.dtype):
         return "classification"
 
     # Numeric target: check uniqueness
     unique_values = series.nunique()
-    if series.dtype in [np.int32, np.int64] and unique_values <= 10:
+    if pd.api.types.is_integer_dtype(series.dtype) and unique_values <= 10:
         return "classification"
 
     return "regression"
@@ -43,29 +31,10 @@ def detect_problem_type(df: pd.DataFrame, target_col: str) -> str:
 def get_model_list(problem_type: str) -> list:
     """Return the list of available model names for the given problem type."""
     if problem_type == "classification":
-        models = [
-            "Logistic Regression",
-            "Decision Tree",
-            "Random Forest",
-            "KNN",
-        ]
-        if HAS_XGB:
-            models.append("XGBoost")
-        if HAS_LGBM:
-            models.append("LightGBM")
-        return models
-    else:
-        models = [
-            "Linear Regression",
-            "Decision Tree Regressor",
-            "Random Forest Regressor",
-            "KNN Regressor",
-        ]
-        if HAS_XGB:
-            models.append("XGBoost Regressor")
-        if HAS_LGBM:
-            models.append("LightGBM Regressor")
-        return models
+        return list(CLASSIFICATION_MODELS)
+    if problem_type == "regression":
+        return list(REGRESSION_MODELS)
+    raise ValueError("problem_type must be classification or regression.")
 
 
 def get_best_model(comparison: list) -> dict:

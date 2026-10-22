@@ -73,15 +73,19 @@ const NumInput = ({ value, onChange, min, max }) => (
     value={value}
     min={min}
     max={max}
-    onChange={e => onChange(parseInt(e.target.value, 10))}
+    onChange={e => {
+      if (e.target.value === '') return;
+      const parsed = Number(e.target.value);
+      if (Number.isInteger(parsed)) onChange(parsed);
+    }}
   />
 );
 
 const AdvancedSettings = () => {
-  const { advancedConfig, setAdvancedConfig, targetColumn, columns, problemType } = useAppContext();
+  const { advancedConfig, setAdvancedConfig, targetColumn, columns, problemType, datasetInfo } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
 
-  const featureColumns = columns.filter(c => c !== targetColumn);
+  const featureColumns = columns.filter(c => c !== targetColumn && !datasetInfo?.imageColumns?.includes(c));
 
   const set = (key, value) => {
     setAdvancedConfig(prev => ({ ...prev, [key]: value }));
@@ -215,7 +219,7 @@ const AdvancedSettings = () => {
                   <div>
                     <p className="adv-tuning-label">Thorough Tuning</p>
                     <p className="adv-tuning-sub">
-                      {isThorough ? 'Grid/Random Search active — finding optimal params' : 'Fast training — uses default hyperparameters'}
+                      {isThorough ? 'Randomized search active — sampling parameter settings' : 'Fast training — uses default hyperparameters'}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -231,7 +235,7 @@ const AdvancedSettings = () => {
                 </div>
                 {isThorough && (
                   <p style={{ fontSize: 10, color: '#f59e0b', marginTop: 8, paddingLeft: 4 }}>
-                    ⚠ Training will take longer. Best for final production models.
+                    ⚠ Training takes longer because models with tuning grids run randomized parameter search.
                   </p>
                 )}
               </Section>
@@ -245,13 +249,13 @@ const AdvancedSettings = () => {
               >
                 <Field
                   label="Number of Folds (K)"
-                  hint="5-fold is standard. 10-fold is more precise but slower. Only used when Thorough Tuning is on."
+                  hint="Used for comparison cross-validation and, when Thorough Tuning is on, parameter search."
                 >
                   <NumInput
                     value={advancedConfig.cv_folds}
                     onChange={v => set('cv_folds', v)}
                     min={2}
-                    max={15}
+                    max={20}
                   />
                 </Field>
                 <div style={{ marginTop: 8, fontSize: 10, color: '#94a3b8', padding: '6px 8px', background: '#ec489910', borderRadius: 7, border: '1px solid #ec489920' }}>

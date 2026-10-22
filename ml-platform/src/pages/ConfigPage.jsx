@@ -8,7 +8,7 @@ import SplitSlider from '../components/Config/SplitSlider';
 import AdvancedSettings from '../components/Config/AdvancedSettings';
 
 const ConfigPage = () => {
-  const { datasetInfo, targetColumn, selectedModel, setProblemType } = useAppContext();
+  const { datasetInfo, targetColumn, problemType, setProblemType } = useAppContext();
   const navigate = useNavigate();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -34,7 +34,7 @@ const ConfigPage = () => {
     }
   }, [targetColumn, datasetInfo, setProblemType]);
 
-  const isReady = targetColumn && selectedModel;
+  const isReady = targetColumn && problemType && !isAnalyzing;
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6 pb-20 mt-8">
@@ -69,9 +69,9 @@ const ConfigPage = () => {
               )}
               
               <div>
-                <h3 className="text-xl font-bold text-[#0f172a] mb-1">Ready to train?</h3>
+                <h3 className="text-xl font-bold text-[#0f172a] mb-1">Ready to compare models?</h3>
                 <p className="text-[#64748b] text-sm">
-                  The engine will process your data and find the optimal weights for your prediction.
+                  The engine will benchmark available models and select the top scorer for your chosen metric.
                 </p>
               </div>
               
@@ -86,10 +86,10 @@ const ConfigPage = () => {
               >
                 {isReady ? (
                   <>
-                    Start Training
+                    Start Model Comparison
                     <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                   </>
-                ) : 'Select Target and Model'}
+                ) : 'Select Target and Task Type'}
               </button>
             </div>
           </div>

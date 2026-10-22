@@ -1,6 +1,6 @@
 # AutoML Studio 🚀
 
-> **Enterprise-Grade No-Code Machine Learning & Predictive Intelligence Platform**
+> **Local prototype for tabular machine learning workflows**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
 [![Frontend: React + Vite + Tailwind](https://img.shields.io/badge/Frontend-React_19_%7C_Vite_%7C_Tailwind_v4-blue)](ml-platform/)
@@ -11,9 +11,9 @@
 
 ## 🌟 Executive Summary
 
-**AutoML Studio** democratizes machine learning by empowering users to transform raw tabular data into production-ready predictive models without writing code. 
+**AutoML Studio** provides a web interface for uploading tabular data, benchmarking baseline models, and reviewing predictions. It is a prototype and is not yet designed for multi-worker or production deployment.
 
-By unifying **automated preprocessing (zero data leakage)**, **multi-model algorithm benchmarks (XGBoost, LightGBM, Random Forest)**, **live web inference playgrounds**, and **packaged `.joblib` pipeline exports**, AutoML Studio bridges the gap between raw data analysis and production AI deployment.
+The app combines leakage-conscious preprocessing inside model pipelines, cross-validated model comparison, a live inference form, and `.joblib` exports for trusted local use.
 
 ---
 
@@ -30,7 +30,7 @@ By unifying **automated preprocessing (zero data leakage)**, **multi-model algor
 +----------------------------------------v------------------------------------------+
 |                                2. BACKEND CORE TIER                               |
 |   - API Gateway & Upload Validator (FastAPI Async ASGI)                           |
-|   - Auth & Session Manager (OAuth2 / JWT / Argon2id / bcrypt)                      |
+|   - Auth & Session Manager (OAuth2 form login / JWT / bcrypt)                     |
 |   - Relational Storage: SQLite 3 via SQLAlchemy 2.0 ORM                           |
 +----------------------------------------+------------------------------------------+
                                          | In-Memory Pipeline Assembly
@@ -48,19 +48,19 @@ By unifying **automated preprocessing (zero data leakage)**, **multi-model algor
 
 * **Frontend**: React 19, Vite 8, Tailwind CSS v4, Recharts, Axios, React Router v7.
 * **Backend**: Python 3.11+, FastAPI 0.110, SQLAlchemy 2.0, Pydantic v2, PyJWT, Passlib.
-* **Machine Learning**: Scikit-Learn, XGBoost, LightGBM, SHAP, NumPy, Pandas, Joblib.
+* **Machine Learning**: Scikit-Learn, XGBoost, LightGBM, NumPy, Pandas, Joblib.
 * **Database & Persistence**: SQLite 3 (SQLAlchemy ORM models for Users & Training History).
 
 ---
 
 ## ⚡ Key Features
 
-1. **Smart Dataset Upload & Guardrails**: Enforces 50MB file size limits, multi-encoding CSV parsing (`utf-8`, `latin1`), and target column validation.
+1. **Smart Dataset Upload & Guardrails**: Enforces 50MB file size limits, multi-encoding CSV parsing (`utf-8`, `latin1`), target column validation, and optional image thumbnails from image URL columns or a ZIP of one CSV plus local images.
 2. **Zero-Data-Leakage Preprocessing**: Assembles unfitted `ColumnTransformer` pipelines that scale, impute, and encode features strictly on `X_train`.
 3. **Multi-Model Benchmark Suite**: Automatically trains and ranks Logistic/Linear Regression, Decision Trees, Random Forest, KNN, **XGBoost**, and **LightGBM**.
-4. **Interactive Inference Playground**: Test custom feature values live on the web UI and receive instant predictions with class probability distributions.
+4. **Interactive Inference Playground**: Test custom feature values live on the web UI and receive predictions with class probabilities when supported.
 5. **Packaged Pipeline Export**: Download fitted Scikit-Learn `.joblib` archives containing preprocessors, estimators, feature names, and target label encoders.
-6. **Thread-Safe History & User Accounts**: Persistent user authentication and training history logs stored in SQLite via SQLAlchemy.
+6. **User Accounts & Training History**: Accounts and model history are stored in SQLite. Active datasets and fitted models are held in memory by one API process and are cleared when it restarts.
 
 ---
 
@@ -81,11 +81,19 @@ cd backend
 # Install dependencies
 pip install -r requirements.txt
 
+# Copy the example environment file (PowerShell)
+Copy-Item .env.example .env
+# Edit .env and set SECRET_KEY to a unique random secret before starting the API.
+
 # Run FastAPI server with Uvicorn
 python -m uvicorn main:app --reload --port 8000
 ```
 Backend API live at: `http://localhost:8000`  
 Swagger API Docs available at: `http://localhost:8000/docs`
+
+### Dataset images
+
+Include an `image`, `image_url`, `photo`, or similar image-named column in the CSV. Values can be browser-accessible image URLs or image filenames. For local photos, upload a ZIP containing exactly one CSV and the referenced image files. The CSV image column is retained for display and excluded from model training. The results page can show the highest predicted item for regression or numeric/ordered class labels; arbitrary text classes have no inherent ranking, so the app does not label one class as “best.”
 
 ---
 
@@ -103,6 +111,8 @@ npm run dev
 ```
 Frontend live at: `http://localhost:5173`
 
+Set `CORS_ORIGINS` to the deployed frontend origin when hosting the UI and API on separate domains. The API requires `SECRET_KEY` at startup.
+
 ---
 
 ## 📡 API Reference Matrix
@@ -111,7 +121,7 @@ Frontend live at: `http://localhost:5173`
 | :--- | :---: | :---: | :--- |
 | `/auth/signup` | `POST` | Public | Register a new user account |
 | `/auth/login` | `POST` | Public | Authenticate user and receive JWT access token |
-| `/upload` | `POST` | Bearer | Upload CSV dataset (max 50MB) |
+| `/upload` | `POST` | Bearer | Upload a CSV or ZIP with exactly one CSV (max 50MB) |
 | `/analyze` | `GET` | Bearer | Retrieve statistical summary of uploaded dataset |
 | `/preprocess` | `POST` | Bearer | Preview preprocessed features and auto-detect problem type |
 | `/train` | `POST` | Bearer | Train a specific ML model pipeline |

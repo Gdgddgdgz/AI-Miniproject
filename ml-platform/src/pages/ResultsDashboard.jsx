@@ -19,6 +19,11 @@ const ResultsDashboard = () => {
   const { trainResults, compareResults, problemType, datasetInfo } = useAppContext();
   const navigate = useNavigate();
 
+  const [inputFeatures, setInputFeatures] = React.useState({});
+  const [predictionResult, setPredictionResult] = React.useState(null);
+  const [predictLoading, setPredictLoading] = React.useState(false);
+  const [predictError, setPredictError] = React.useState(null);
+
   if (!trainResults || !compareResults) {
     return (
       <div className="text-center py-20 mt-10 animate-slide-up">
@@ -28,14 +33,8 @@ const ResultsDashboard = () => {
     );
   }
 
-  const { metrics, model, explanation, predictions, feature_importances, raw_features } = trainResults;
-  const { best_model, summary } = compareResults;
-  const isBest = best_model && best_model.model === model;
-
-  const [inputFeatures, setInputFeatures] = React.useState({});
-  const [predictionResult, setPredictionResult] = React.useState(null);
-  const [predictLoading, setPredictLoading] = React.useState(false);
-  const [predictError, setPredictError] = React.useState(null);
+  const { metrics, model, explanation, predictions, feature_importances, raw_features, recommended_item } = trainResults;
+  const { summary } = compareResults;
 
   const featureKeys = raw_features || (datasetInfo?.columns ? datasetInfo.columns.filter(c => c !== trainResults.target) : []);
 
@@ -115,28 +114,23 @@ const ResultsDashboard = () => {
       </div>
 
       {/* Recommendation Banner */}
-      {!isBest && best_model && (
-        <div className="saas-card overflow-hidden flex items-stretch border-[#f59e0b]/30 shadow-sm animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="w-2 bg-[#f59e0b]"></div>
-          <div className="p-5 flex items-start gap-4 flex-1">
-            <div className="w-8 h-8 rounded-full bg-[#fffaeb] flex items-center justify-center flex-shrink-0 text-[#b54708]">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
+      {recommended_item && (
+        <section className="bg-white rounded-xl border border-[#e3e8ee] shadow-sm p-6">
+          <h2 className="text-xl font-bold text-[#1a1f36] mb-4">Top predicted item</h2>
+          <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
+            {recommended_item.image_url && <img src={recommended_item.image_url} alt={recommended_item.label} className="w-40 h-40 rounded-xl object-cover bg-[#f7f9fc]" />}
             <div>
-              <h3 className="text-base font-bold text-[#1a1f36] mb-1">Optimization Opportunity Discovered</h3>
-              <p className="text-[#4f566b] text-sm leading-relaxed">{summary}</p>
-              <div className="mt-3 flex items-center gap-4 text-xs font-semibold text-[#8792a2]">
-                <span className="bg-[#f7f9fc] px-2.5 py-1 rounded border border-[#e3e8ee]">
-                  Your Model: {problemType === 'classification' ? `${(metrics.f1_score*100).toFixed(2)}%` : metrics.r2.toFixed(4)}
-                </span>
-                <span className="bg-[#e0f2f1] text-[#0e6245] px-2.5 py-1 rounded border border-[#a7f3d0]">
-                  Recommended Model: {problemType === 'classification' ? `${(best_model.score*100).toFixed(2)}%` : best_model.score.toFixed(4)}
-                </span>
-              </div>
+              <div className="text-lg font-semibold text-[#1a1f36]">{recommended_item.label}</div>
+              <div className="text-sm text-[#4f566b] mt-1">Predicted {trainResults.target}: <strong>{recommended_item.prediction}</strong></div>
             </div>
           </div>
-        </div>
+        </section>
       )}
+      {!recommended_item && problemType === 'classification' && (
+        <p className="text-sm text-[#64748b]">An image recommendation is shown for numeric targets or ordered numeric class labels.</p>
+      )}
+
+      <p className="text-sm text-[#4f566b]">{summary}</p>
 
       {/* Interactive Live Inference Playground */}
       <div className="bg-white rounded-xl shadow-sm border border-[#e3e8ee] p-7">
@@ -146,7 +140,7 @@ const ResultsDashboard = () => {
             <span className="bg-[#e0e7ff] text-[#4338ca] text-xs px-2.5 py-1 rounded-full font-semibold">Live Model API</span>
           </h2>
           <p className="text-sm text-[#6b7280] mt-1">
-            Test custom feature values in real time against your deployed pipeline.
+            Test custom feature values against the selected model in this project session.
           </p>
         </div>
 
@@ -155,7 +149,7 @@ const ResultsDashboard = () => {
         ) : (
           <form onSubmit={handlePredict} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {featureKeys.slice(0, 12).map((key) => (
+              {featureKeys.map((key) => (
                 <div key={key} className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-[#4f566b] truncate" title={key}>
                     {key}
@@ -233,7 +227,7 @@ const ResultsDashboard = () => {
       </div>
 
       <div className="pt-4 border-t border-[#e3e8ee]">
-        <MemoComparisonTable comparison={compareResults.comparison} problemType={problemType} />
+        <MemoComparisonTable comparison={compareResults.comparison} problemType={problemType} metric={compareResults.metric} />
       </div>
 
     </div>

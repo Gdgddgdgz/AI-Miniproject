@@ -8,8 +8,12 @@ Auth is enforced inside each route via Depends(get_current_user).
 The /auth/* endpoints are intentionally public.
 """
 
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
 
 from routes import upload, analyze, preprocess, train, download, dashboard, auth, predict
 
@@ -26,10 +30,11 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
+cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for easy external deployment (e.g. Vercel -> Render)
-    allow_credentials=False, # Must be False when origin is "*"
+    allow_origins=cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],

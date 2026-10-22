@@ -2,7 +2,7 @@ import React from 'react';
 import { useAppContext } from '../../context/AppContext';
 
 const ColumnSelector = () => {
-  const { columns, targetColumn, setTargetColumn } = useAppContext();
+  const { columns, targetColumn, setTargetColumn, datasetInfo } = useAppContext();
   if (!columns || columns.length === 0) return null;
 
   return (
@@ -25,7 +25,7 @@ const ColumnSelector = () => {
             className="w-full bg-[#f8fafc] border border-[#e2e8f0] hover:border-[#cbd5e1] rounded-xl px-5 py-3.5 text-sm text-[#1e293b] font-medium shadow-sm appearance-none focus:outline-none focus:ring-2 focus:ring-[#635bff]/20 focus:border-[#635bff] transition-all cursor-pointer"
           >
             <option value="" disabled>Choose target column from dataset...</option>
-            {columns.map((col) => (
+            {columns.filter((col) => !datasetInfo?.imageColumns?.includes(col)).map((col) => (
               <option key={col} value={col}>{col}</option>
             ))}
           </select>

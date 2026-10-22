@@ -1,6 +1,6 @@
 import React from 'react';
 
-const MetricsCard = ({ title, value, type = 'default', subtitle }) => {
+const MetricsCard = ({ title, value, subtitle }) => {
   return (
     <div className="saas-card p-5 group">
       <div className="flex justify-between items-start mb-2">

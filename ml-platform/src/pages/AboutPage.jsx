@@ -20,7 +20,7 @@ const AboutPage = () => {
         </h1>
         
         <p className="text-xl sm:text-2xl text-[#4f566b] leading-relaxed max-w-2xl mx-auto font-medium mb-12">
-          AutoML Studio is a completely proprietary, advanced Data Science platform built from the ground up to democratize machine learning for everyone.
+          AutoML Studio is an open-source prototype for exploring tabular machine learning workflows.
         </p>
 
         {/* Feature grid */}
@@ -28,12 +28,12 @@ const AboutPage = () => {
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-[#e3e8ee] hover:shadow-md transition-shadow">
             <div className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-xl mb-6">⚡</div>
             <h3 className="text-xl font-bold text-[#1a1f36] mb-3">Custom Architecture</h3>
-            <p className="text-[#4f566b] leading-relaxed text-sm">Every element of this platform, from the React interface algorithms to the FastAPI training tournament structure, was meticulously coded by Awwab to ensure perfectly optimized execution times.</p>
+            <p className="text-[#4f566b] leading-relaxed text-sm">The project combines a React interface with a FastAPI backend and scikit-learn pipelines for common tabular prediction tasks.</p>
           </div>
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-[#e3e8ee] hover:shadow-md transition-shadow">
             <div className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-xl mb-6">🧠</div>
             <h3 className="text-xl font-bold text-[#1a1f36] mb-3">Intelligent System</h3>
-            <p className="text-[#4f566b] leading-relaxed text-sm">The platform boasts an exclusive engine that automatically handles Null Imputation, Model Ranking, Type Detection, and Model Cross-Validation completely dynamically.</p>
+            <p className="text-[#4f566b] leading-relaxed text-sm">The workflow includes missing-value handling, suggested task detection, cross-validated model ranking, and holdout evaluation.</p>
           </div>
         </div>
 

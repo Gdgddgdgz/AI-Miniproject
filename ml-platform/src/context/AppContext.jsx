@@ -1,21 +1,17 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   // Dataset state
-  const [datasetInfo, setDatasetInfo] = useState(null); // shape, dtypes, filename
+  const [datasetInfo, setDatasetInfo] = useState(null); // shape, dtypes, filename, image metadata
   const [previewData, setPreviewData] = useState([]);
   const [columns, setColumns] = useState([]);
-  
-  // Analysis state
-  const [analysis, setAnalysis] = useState(null); // missing_values, unique_values, stats
   
   // Preprocessing / Configuration state
   const [targetColumn, setTargetColumn] = useState('');
   const [problemType, setProblemType] = useState('');
   const [testSize, setTestSize] = useState(0.2);
-  const [selectedModel, setSelectedModel] = useState('');
   
   // Advanced Configuration
   const [advancedConfig, setAdvancedConfig] = useState({
@@ -33,15 +29,13 @@ export const AppProvider = ({ children }) => {
   const [compareResults, setCompareResults] = useState(null);
 
   // Global app methods
-  const resetApp = () => {
+  const resetApp = useCallback(() => {
     setDatasetInfo(null);
     setPreviewData([]);
     setColumns([]);
-    setAnalysis(null);
     setTargetColumn('');
     setProblemType('');
     setTestSize(0.2);
-    setSelectedModel('');
     setTrainResults(null);
     setCompareResults(null);
     setAdvancedConfig({
@@ -53,18 +47,16 @@ export const AppProvider = ({ children }) => {
       optimization_metric: 'auto',
       random_seed: 42
     });
-  };
+  }, []);
 
   return (
     <AppContext.Provider value={{
       datasetInfo, setDatasetInfo,
       previewData, setPreviewData,
       columns, setColumns,
-      analysis, setAnalysis,
       targetColumn, setTargetColumn,
       problemType, setProblemType,
       testSize, setTestSize,
-      selectedModel, setSelectedModel,
       trainResults, setTrainResults,
       compareResults, setCompareResults,
       advancedConfig, setAdvancedConfig,
@@ -75,4 +67,6 @@ export const AppProvider = ({ children }) => {
   );
 };
 
+// Context hooks live with their provider to keep the app state API together.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = () => useContext(AppContext);

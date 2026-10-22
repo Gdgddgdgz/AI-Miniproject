@@ -15,6 +15,18 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from typing import Tuple, List
+import re
+
+
+def get_image_columns(df: pd.DataFrame) -> List[str]:
+    """Find columns that hold an image reference or image asset filename."""
+    image_name = re.compile(r"(^|[_\s-])(image|img|photo|picture|thumbnail)([_\s-]|$)", re.I)
+    columns = []
+    for col in df.columns:
+        name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", str(col))
+        if image_name.search(name):
+            columns.append(str(col))
+    return columns
 
 
 def get_column_types(df: pd.DataFrame) -> Tuple[List[str], List[str]]:
@@ -104,29 +116,16 @@ def prepare_features_and_target(
     if imputation_strategy == "drop":
         df = df.dropna()
 
-    X = df.drop(columns=[target_col])
+    image_cols = get_image_columns(df)
+    X = df.drop(columns=[target_col, *image_cols], errors="ignore")
     y = df[target_col]
 
     # Encode non-numeric targets for classification
     label_encoder = None
-    if y.dtype == object or str(y.dtype) == "category" or not np.issubdtype(y.dtype, np.number):
+    if y.dtype == object or str(y.dtype) == "category" or not pd.api.types.is_numeric_dtype(y.dtype):
         label_encoder = LabelEncoder()
         y = pd.Series(label_encoder.fit_transform(y.astype(str)), name=target_col, index=X.index)
 
     num_cols, cat_cols = get_column_types(X)
     return X, y, num_cols, cat_cols, label_encoder
-
-
-def preprocess_for_preview(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
-    """
-    Return a preview of the preprocessed data (for the /preprocess endpoint) by fitting on sample data.
-    """
-    X, y, num_cols, cat_cols, _ = prepare_features_and_target(df, target_col)
-    preprocessor = build_preprocessor(num_cols, cat_cols)
-    X_processed = preprocessor.fit_transform(X)
-    feature_names = get_feature_names_from_preprocessor(preprocessor, num_cols, cat_cols)
-    
-    processed_df = pd.DataFrame(X_processed, columns=feature_names, index=X.index)
-    processed_df[target_col] = y.values
-    return processed_df
 

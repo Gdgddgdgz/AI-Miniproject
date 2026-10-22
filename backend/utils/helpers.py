@@ -14,13 +14,14 @@ _user_sessions: Dict[str, Dict[str, Any]] = {}
 
 _EMPTY_SESSION = {
     "raw_df": None,           # pd.DataFrame uploaded by the user
-    "processed_df": None,     # pd.DataFrame after preprocessing
     "trained_model": None,    # sklearn estimator (last trained)
     "model_name": None,       # str – name of the last trained model
     "target_column": None,    # str – name of the target column
     "feature_columns": None,  # list – feature column names (after encoding)
     "problem_type": None,     # "classification" | "regression"
     "label_encoder": None,    # LabelEncoder for the target (classification)
+    "image_columns": None,    # image reference columns kept for display, excluded from model features
+    "image_map": None,        # archive filename -> data URI for uploaded image assets
 }
 
 

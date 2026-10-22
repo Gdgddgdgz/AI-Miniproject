@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
-from typing import Tuple, Any, Dict, List
+from typing import Tuple, Any, Dict, List, Optional
 
 # Try importing XGBoost & LightGBM with robust fallbacks
 try:
@@ -87,12 +87,17 @@ def build_full_pipeline(preprocessor, estimator) -> Pipeline:
     ])
 
 
-def split_data(X, y, test_size: float = 0.2, random_seed: int = 42) -> Tuple:
-    """Stratified split for classification; random split for regression."""
+def split_data(X, y, test_size: float = 0.2, random_seed: int = 42, stratify: bool = False) -> Tuple:
+    """Split data, preserving class proportions when requested."""
     try:
-        return train_test_split(X, y, test_size=test_size, random_state=random_seed, stratify=y)
-    except Exception:
-        return train_test_split(X, y, test_size=test_size, random_state=random_seed)
+        return train_test_split(
+            X, y, test_size=test_size, random_state=random_seed,
+            stratify=y if stratify else None,
+        )
+    except ValueError as exc:
+        if stratify:
+            raise ValueError("Classification needs enough examples in every class for the chosen test split.") from exc
+        raise ValueError(f"Could not create the train/test split: {exc}") from exc
 
 
 def train_pipeline(
@@ -104,41 +109,45 @@ def train_pipeline(
     cv_folds: int = 5,
     optimization_metric: str = "auto",
     random_seed: int = 42
-) -> Pipeline:
+) -> Tuple[Pipeline, Optional[float]]:
     """
     Fit the full Pipeline strictly on X_train to prevent data leakage.
     Wrap in RandomizedSearchCV if optimization_mode == 'thorough'.
     """
     if optimization_mode == "thorough" and model_name in PARAM_GRIDS and PARAM_GRIDS[model_name]:
         param_grid = PARAM_GRIDS[model_name]
-        scorer = None
-        if optimization_metric != "auto":
-            scorer_map = {
-                "accuracy":  "accuracy",
-                "f1":        "f1_weighted",
-                "recall":    "recall_weighted",
-                "precision": "precision_weighted",
-                "r2":        "r2",
-                "rmse":      "neg_root_mean_squared_error",
-                "mae":       "neg_mean_absolute_error",
-            }
-            scorer = scorer_map.get(optimization_metric)
+        is_classifier = model_name in CLASSIFICATION_MODELS
+        scorer_map = {
+            "accuracy": "accuracy", "f1": "f1_weighted",
+            "recall": "recall_weighted", "precision": "precision_weighted",
+            "r2": "r2", "rmse": "neg_root_mean_squared_error",
+            "mae": "neg_mean_absolute_error", "auto": "f1_weighted" if is_classifier else "r2",
+        }
+        scorer = scorer_map.get(optimization_metric)
+        if scorer is None:
+            raise ValueError(f"Unsupported optimization metric: {optimization_metric}")
 
+        if model_name in CLASSIFICATION_MODELS:
+            folds = min(cv_folds, int(y_train.value_counts().min()))
+        else:
+            folds = min(cv_folds, len(y_train))
+        if folds < 2:
+            raise ValueError("Hyperparameter tuning requires at least two examples in each training fold.")
         n_iter = 10
         search = RandomizedSearchCV(
             pipeline, 
             param_grid, 
             n_iter=n_iter, 
-            cv=cv_folds, 
+            cv=folds,
             scoring=scorer,
             random_state=random_seed,
-            n_jobs=-1
+            n_jobs=1
         )
         search.fit(X_train, y_train)
-        return search.best_estimator_
+        return search.best_estimator_, float(search.best_score_)
         
     pipeline.fit(X_train, y_train)
-    return pipeline
+    return pipeline, None
 
 
 def get_feature_importances(pipeline: Pipeline, feature_names: List[str]) -> List[Dict]:
@@ -153,7 +162,11 @@ def get_feature_importances(pipeline: Pipeline, feature_names: List[str]) -> Lis
     if hasattr(model, "feature_importances_"):
         importances = model.feature_importances_
     elif hasattr(model, "coef_"):
-        coefs = np.abs(model.coef_).flatten()[:len(feature_names)]
+        coefficients = np.asarray(model.coef_)
+        coefs = np.abs(coefficients)
+        if coefs.ndim > 1:
+            coefs = coefs.mean(axis=0)
+        coefs = coefs[:len(feature_names)]
         total = coefs.sum() or 1
         importances = coefs / total
 

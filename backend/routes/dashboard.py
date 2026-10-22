@@ -15,7 +15,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 async def get_models_history(current_user: str = Depends(get_current_user)):
     """
     Returns a list of all models trained by the current user.
-    Each entry contains model name, target, metrics, and timestamp.
+    Each entry contains model name, target, metrics, primary score, and timestamp.
     """
     history = get_user_history(current_user)
     return {"history": history, "count": len(history)}

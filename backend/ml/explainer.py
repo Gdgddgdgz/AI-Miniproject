@@ -28,8 +28,7 @@ def generate_explanation(
         
         explanation = (
             f"{model_name} delivered an {quality} predictive performance with an F1-Score of {f1:.2%} "
-            f"(Accuracy: {acc:.2%}, Precision: {prec:.2%}, Recall: {rec:.2%}).{feat_str} "
-            f"Cross-validation confirms stable decision boundaries across target classes."
+            f"(Accuracy: {acc:.2%}, Precision: {prec:.2%}, Recall: {rec:.2%}).{feat_str}"
         )
     else:
         r2 = metrics.get("r2", 0.0)
@@ -40,8 +39,7 @@ def generate_explanation(
 
         explanation = (
             f"{model_name} demonstrated a {fit_quality} fit, explaining {r2:.2%} of target variance (R² = {r2:.4f}). "
-            f"Error metrics: RMSE = {rmse:.4f}, MAE = {mae:.4f}.{feat_str} "
-            f"Residual variance indicates effective capture of primary feature interactions."
+            f"Error metrics: RMSE = {rmse:.4f}, MAE = {mae:.4f}.{feat_str}"
         )
 
     if is_best:
@@ -50,15 +48,19 @@ def generate_explanation(
     return explanation
 
 
-def generate_comparison_summary(best_model: Dict, problem_type: str) -> str:
+def generate_comparison_summary(best_model: Dict, problem_type: str, metric: str = "auto") -> str:
     """Generate a detailed summary comparing model benchmarks."""
     if not best_model:
-        return "No model comparison available."
+        return "No model completed the comparison. Check the per-model errors and dataset size."
     name  = best_model.get("model", "Unknown")
     score = best_model.get("score", 0.0)
-    metric = "F1-Score" if problem_type == "classification" else "R² Score"
+    metric_names = {
+        "accuracy": "Accuracy", "f1": "weighted F1", "recall": "weighted recall",
+        "precision": "weighted precision", "r2": "R²", "rmse": "RMSE", "mae": "MAE",
+    }
+    metric_label = metric_names.get(metric, "weighted F1" if problem_type == "classification" else "R²")
     return (
-        f"Automated benchmark complete: {name} achieved the top performance with a {metric} of {score:.4f}. "
-        f"This model exhibits optimal generalization balance and is primed for downstream production deployment."
+        f"Cross-validation ranked {name} highest by {metric_label} ({score:.4f}). "
+        "The holdout metrics below are reported separately for the selected model."
     )
 

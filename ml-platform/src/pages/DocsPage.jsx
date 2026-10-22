@@ -35,7 +35,7 @@ const DocsPage = () => {
             <section id="introduction">
               <h2 className="text-2xl font-bold text-[#1a1f36] mb-5">Introduction</h2>
               <p className="text-[#4f566b] leading-relaxed text-lg">
-                AutoML Studio replaces the tedious process of manual Python data science. It handles intelligent type inference, null-value patching, algorithm scaling, model tournament cross-validation, and performance visualization across both Classification and Regression disciplines.
+                AutoML Studio provides a guided workflow for tabular classification and regression. It detects a suggested task type, lets you override it, benchmarks available models with cross-validation, and reports holdout metrics for the selected model.
               </p>
             </section>
 
@@ -52,7 +52,7 @@ const DocsPage = () => {
                   <ul className="space-y-3 m-0">
                     <li className="flex items-start gap-3">
                       <div className="mt-1 text-green-500"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></div>
-                      <span><strong>Format:</strong> Strictly <code>.csv</code> (Comma Separated Values) text arrays. No Excel binary files (`.xlsx`).</span>
+                      <span><strong>Format:</strong> Upload a <code>.csv</code>, or a <code>.zip</code> containing exactly one CSV and its referenced image files. Excel files are not supported.</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <div className="mt-1 text-green-500"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></div>
@@ -60,7 +60,7 @@ const DocsPage = () => {
                     </li>
                     <li className="flex items-start gap-3">
                       <div className="mt-1 text-red-500"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></div>
-                      <span><strong>File Size:</strong> Maximum optimal stability cap is 50MB. Uploads larger than 100MB may experience browser timeouts.</span>
+                      <span><strong>File Size:</strong> Uploads are limited to 50MB. A ZIP can contain one CSV and images up to the documented per-image and total image limits.</span>
                     </li>
                   </ul>
                 </div>
@@ -113,7 +113,7 @@ const DocsPage = () => {
                   <span>🏆</span> What is a good R² Score?
                 </h4>
                 <p className="text-[#b54708]/90 text-sm leading-relaxed">
-                  R-Squared signifies how much variance your model explains. A score of <code>1.00</code> is absolute perfection. A score of <code>0.00</code> means the model guesses randomly. Look for scores <code>&gt; 0.75</code> for robust production readiness.
+                  R² compares model error with a mean-value baseline. A score of <code>1.00</code> is a perfect fit, <code>0</code> is about as good as predicting the target mean, and a negative score is worse than that baseline. There is no universal threshold for a useful score; compare it with the task requirements and a suitable baseline.
                 </p>
               </div>
             </section>
@@ -121,15 +121,15 @@ const DocsPage = () => {
             <section id="export">
               <h2 className="text-2xl font-bold text-[#1a1f36] mb-5 border-b border-[#e3e8ee] pb-4">Export & Deployment</h2>
               <p className="text-[#4f566b] leading-relaxed mb-4">
-                Once satisfied with your metrics, click the <strong>Export Model</strong> button on the results dashboard. This initiates a serialized download of the model object (standard <code>.pkl</code> or <code>.joblib</code> compatible stream).
+                The results dashboard can download the selected model as a <code>.joblib</code> package. Joblib is pickle-based: only load a model package you trust.
               </p>
               <div className="bg-[#f0f9ff] border border-[#bae6fd] p-5 rounded-xl flex items-start gap-4">
                 <div className="text-blue-500 mt-1">
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                 </div>
                 <div>
-                  <h4 className="font-bold text-[#0369a1]">Production Ready</h4>
-                  <p className="text-sm text-[#0369a1]">The exported file includes all necessary scaling parameters and label encoders required for local or production environment inference.</p>
+                  <h4 className="font-bold text-[#0369a1]">Local model export</h4>
+                  <p className="text-sm text-[#0369a1]">The package includes the fitted preprocessing pipeline and estimator. The web app's active datasets and models are process-local and are not production persistence.</p>
                 </div>
               </div>
             </section>

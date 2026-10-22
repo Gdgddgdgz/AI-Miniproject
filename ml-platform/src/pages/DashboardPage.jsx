@@ -35,10 +35,12 @@ const DashboardPage = () => {
   };
 
   const getPrimaryScore = (m) => {
-    if (!m.metrics) return '—';
-    if (m.metrics.accuracy !== undefined) return `${(m.metrics.accuracy * 100).toFixed(2)}% acc`;
-    if (m.metrics.r2 !== undefined) return `${parseFloat(m.metrics.r2).toFixed(4)} R²`;
-    return '—';
+    if (m.primary_score === undefined || m.primary_score === null) return '—';
+    const metric = m.parameters?.metric || (m.problem_type === 'classification' ? 'f1' : 'r2');
+    const cvLabel = m.parameters?.mode === 'compare' ? ' CV' : '';
+    if (['f1', 'accuracy', 'precision', 'recall'].includes(metric)) return `${(Number(m.primary_score) * 100).toFixed(2)}% ${metric}${cvLabel}`;
+    if (metric === 'rmse' || metric === 'mae') return `${Number(m.primary_score).toFixed(4)} ${metric.toUpperCase()}${cvLabel}`;
+    return `${Number(m.primary_score).toFixed(4)} R²${cvLabel}`;
   };
 
   return (

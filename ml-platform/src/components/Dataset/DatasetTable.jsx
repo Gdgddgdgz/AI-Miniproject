@@ -39,7 +39,11 @@ const DatasetTable = ({ maxRows = 10, showDtypes = true }) => {
               <tr key={idx}>
                 {columns.map(col => (
                   <td key={`${idx}-${col}`}>
-                    {row[col] === null ? <span className="text-[#8792a2] italic text-xs">NaN</span> : String(row[col])}
+                    {datasetInfo?.imageColumns?.includes(col) && row[col] ? (() => {
+                      const value = String(row[col]);
+                      const src = datasetInfo.imageMap?.[value] || datasetInfo.imageMap?.[value.replaceAll('\\', '/').split('/').pop()] || value;
+                      return <img src={src} alt={`${col} for row ${idx + 1}`} className="w-16 h-16 rounded-md object-cover" />;
+                    })() : row[col] === null ? <span className="text-[#8792a2] italic text-xs">NaN</span> : String(row[col])}
                   </td>
                 ))}
               </tr>

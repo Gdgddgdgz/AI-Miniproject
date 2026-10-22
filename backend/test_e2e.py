@@ -5,8 +5,10 @@ import pandas as pd
 import numpy as np
 
 BASE_URL = "http://localhost:8000"
+test_username = None
 
 def run_tests():
+    global test_username
     print("🚀 Starting End-to-End API Verification...")
     
     # 1. Create a dummy CSV dataset
@@ -23,7 +25,8 @@ def run_tests():
     # 2. Signup
     print("--> Testing /auth/signup...")
     username = f"testuser_{int(time.time())}"
-    password = "password123"
+    test_username = username
+    password = "StrongPassword123!"
     res = session.post(f"{BASE_URL}/auth/signup", json={"username": username, "password": password})
     assert res.status_code == 200, f"Signup failed: {res.text}"
     print(f"    Signup successful for {username}")
@@ -109,10 +112,22 @@ def run_tests():
 
 
 if __name__ == "__main__":
+    success = False
     try:
         success = run_tests()
+    except Exception as exc:
+        print(f"End-to-end run failed: {exc}")
     finally:
         if os.path.exists("dummy_dataset.csv"):
             os.remove("dummy_dataset.csv")
+        if test_username:
+            from utils.db import get_db_session, ModelHistoryRecord, User
+            db = get_db_session()
+            try:
+                db.query(ModelHistoryRecord).filter(ModelHistoryRecord.username == test_username).delete()
+                db.query(User).filter(User.username == test_username).delete()
+                db.commit()
+            finally:
+                db.close()
     if not success:
         exit(1)

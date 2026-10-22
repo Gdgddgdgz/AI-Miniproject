@@ -42,7 +42,22 @@ def predict_single(
         raise HTTPException(status_code=400, detail="Feature payload is empty.")
 
     try:
-        input_df = pd.DataFrame([body.features])
+        raw_df = session.get("raw_df")
+        expected_features = session.get("raw_feature_columns") or []
+        if not expected_features:
+            raise ValueError("The trained model feature schema is unavailable. Retrain the model.")
+        normalized = {}
+        for column in expected_features:
+            value = body.features.get(column)
+            if value == "":
+                value = None
+            if value is not None and raw_df is not None and pd.api.types.is_numeric_dtype(raw_df[column].dtype):
+                parsed = pd.to_numeric(value, errors="coerce")
+                if pd.isna(parsed):
+                    raise ValueError(f"'{column}' must be a numeric value.")
+                value = float(parsed)
+            normalized[column] = value
+        input_df = pd.DataFrame([normalized], columns=expected_features)
         raw_pred = pipeline.predict(input_df)[0]
 
         # If classification with label_encoder, decode numeric back to original target string

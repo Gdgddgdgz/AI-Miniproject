@@ -30,6 +30,7 @@ apiInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token is expired or invalid – clear it
       localStorage.removeItem('token');
+      window.dispatchEvent(new Event('auth:expired'));
     }
     return Promise.reject(error);
   }
