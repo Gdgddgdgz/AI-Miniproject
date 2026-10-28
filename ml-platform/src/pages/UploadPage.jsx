@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUploader from '../components/Upload/FileUploader';
 import DatasetTable from '../components/Dataset/DatasetTable';
+import DataQualityCard from '../components/Dataset/DataQualityCard';
 import { useAppContext } from '../context/AppContext';
 
 const UploadPage = () => {
@@ -42,6 +43,11 @@ const UploadPage = () => {
             </button>
           </div>
           
+          <DataQualityCard 
+            qualityReport={datasetInfo.qualityReport} 
+            medallion={datasetInfo.medallion} 
+          />
+
           <div className="bg-white border border-[#e3e8ee] rounded-xl shadow-sm overflow-hidden w-full">
             <DatasetTable maxRows={10} />
           </div>

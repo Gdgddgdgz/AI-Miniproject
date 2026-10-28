@@ -122,5 +122,41 @@ export const api = {
   getModelHistory() {
     return apiInstance.get('/dashboard/models');
   },
+
+  // ── Data Engineering & Lakehouse ──────────────────────────────────────
+  getQualityReport() {
+    return apiInstance.get('/de/quality-report');
+  },
+
+  getLakehouseMetrics() {
+    return apiInstance.get('/de/lakehouse-metrics');
+  },
+
+  promoteToSilver() {
+    return apiInstance.post('/de/promote-silver');
+  },
+
+  async downloadParquet(tier = 'silver') {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await apiInstance.get(`/de/download/${tier}`, {
+        responseType: 'blob',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      const disposition = response.headers['content-disposition'] || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      link.href = url;
+      link.setAttribute('download', match ? match[1] : `${tier}_tier.parquet`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Failed to download ${tier} Parquet: ` + (err.response?.data?.detail || err.message));
+      console.error(err);
+    }
+  },
 };
 

@@ -15,6 +15,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from utils.helpers import get_session, reset_session, df_to_records, column_dtypes
 from utils.auth import get_current_user
 from ml.preprocessing import get_image_columns
+from de.medallion import lakehouse
+from de.quality import run_data_quality_checks
 
 router = APIRouter()
 
@@ -105,8 +107,18 @@ async def upload_dataset(
     reset_session(current_user)
     session = get_session(current_user)
     session["raw_df"] = df
+    session["filename"] = file.filename
     session["image_columns"] = image_columns
     session["image_map"] = image_map
+
+    # ── Medallion Lakehouse Tiers (Bronze & Silver) & Data Quality Gate ──────
+    bronze_meta = lakehouse.save_bronze(current_user, contents, file.filename, df)
+    silver_meta = lakehouse.promote_to_silver(current_user, df, bronze_meta=bronze_meta)
+    quality_report = run_data_quality_checks(df)
+
+    session["de_bronze_meta"] = bronze_meta
+    session["de_silver_meta"] = silver_meta
+    session["de_quality_report"] = quality_report
 
     return {
         "filename": file.filename,
@@ -116,6 +128,11 @@ async def upload_dataset(
         "preview": df_to_records(df, max_rows=20),
         "image_columns": session["image_columns"],
         "image_map": image_map,
+        "medallion": {
+            "bronze": bronze_meta,
+            "silver": silver_meta,
+        },
+        "quality_report": quality_report,
     }
 
 

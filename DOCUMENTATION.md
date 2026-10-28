@@ -166,3 +166,48 @@ print("Prediction:", prediction)
 5. **Evaluate**: Inspect accuracy, F1, precision, recall, confusion matrix, or R² / RMSE on the UI.
 6. **Playground Inference**: Test live custom inputs on the Interactive Live Inference Playground.
 7. **Export**: Download the fitted `.joblib` model package for trusted local use.
+
+---
+
+## 9. Data Engineering Architecture: Medallion Lakehouse & Quality Gate Engine
+
+AutoML Studio implements an enterprise **Medallion Data Lakehouse Pipeline** with automated **Data Quality Contracts** and **Apache Parquet Columnar Storage**. In this architecture, Machine Learning is treated as a downstream consumer validating pipeline signal retention.
+
+```mermaid
+flowchart LR
+    A["Raw Data Ingestion (CSV / ZIP)"] --> B["🥉 Bronze Tier\n(Immutable Raw + SHA-256)"]
+    B --> C["🛡️ Data Quality Gate\n(5 Contract Assertions)"]
+    C --> D["🥈 Silver Tier\n(Cleansed Snappy Parquet)"]
+    D --> E["🥇 Gold Tier\n(Curated Feature Store)"]
+    E --> F["🧠 Downstream Consumers\n(Analytical Queries & ML Benchmarks)"]
+```
+
+### 9.1 Lakehouse Storage Tiers
+* **Bronze Tier (Raw Landing)**: Ingests raw CSV payloads, computes cryptographic SHA-256 payload checksums for lineage auditability, and stores an immutable record in `backend/storage/bronze/`.
+* **Silver Tier (Cleansed Parquet)**: Cleanses incoming batches by purging duplicate rows, imputing missing values, standardizing schema names to `snake_case`, and serializing to **Apache Parquet with Snappy compression** (saving up to ~75% disk space).
+* **Gold Tier (Curated Feature Store)**: Encodes categoricals, scales feature distributions, and structures the curated feature matrix in `backend/storage/gold/` ready for analytical SQL queries or downstream consumers.
+
+### 9.2 Automated Data Quality Gate & Contracts
+Before promotion into the Silver layer, every dataset is audited against 5 data engineering contract assertions:
+1. **Completeness Threshold**: Validates overall dataset completeness ratio ($\ge 80\%$) and flags high-null columns ($>30\%$).
+2. **Uniqueness Assertion**: Detects duplicate records and computes duplicate percentage.
+3. **Schema Contract**: Enforces column naming conventions and verifies inferred datatypes.
+4. **Anomaly Range Profiling**: Identifies numeric outliers using interquartile range (IQR) bounds.
+5. **Quality Scorecard**: Aggregates rule evaluations into a 0–100% Quality Score and assigns a promotion verdict (`PROMOTED_TO_SILVER`, `PROMOTED_WITH_WARNINGS`, or `QUARANTINE_FLAGGED`).
+
+### 9.3 Columnar Storage Exports
+Users can directly stream and download lakehouse tiers in modern analytical formats:
+* `GET /de/download/silver` $\rightarrow$ Streams `silver_cleaned.parquet`.
+* `GET /de/download/gold` $\rightarrow$ Streams `gold_feature_store.parquet`.
+* `GET /de/lakehouse-metrics` $\rightarrow$ Live storage telemetry (raw bytes, parquet bytes, compression ratio).
+
+---
+
+## 10. Data Engineering Project Defense & Viva Talking Points
+
+| Evaluator Question | Data Engineering Defense |
+|---|---|
+| **"What makes this a Data Engineering project rather than pure ML?"** | *"The primary focus is data ingestion, schema validation, multi-tier lakehouse storage (Bronze $\rightarrow$ Silver $\rightarrow$ Gold), and columnar Parquet optimization. Machine learning serves merely as a downstream validator to prove that our feature pipeline preserved signal without data leakage."* |
+| **"Why Medallion Architecture?"** | *"Medallion separates raw ingestion (Bronze) from cleansed data (Silver) and business-ready features (Gold). This ensures auditability, prevents raw data loss, and enables different downstream consumers to query the appropriate tier."* |
+| **"Why convert from CSV to Apache Parquet?"** | *"CSVs are row-oriented, uncompressed, and lack schema enforcement. Apache Parquet uses columnar storage with Snappy compression, significantly reducing I/O, speeding up analytical aggregate queries, and reducing disk footprint by ~70%."* |
+| **"How do you enforce Data Quality?"** | *"The pipeline runs an automated gatekeeper verifying completeness, uniqueness, and schema sanity. If duplicate rows or excessive missing values are detected, automated remediation cleanses the data during Silver tier promotion."* |

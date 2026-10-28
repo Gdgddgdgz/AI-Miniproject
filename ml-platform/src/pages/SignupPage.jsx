@@ -8,6 +8,7 @@ const SignupPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -22,13 +23,24 @@ const SignupPage = () => {
     }
     setLoading(true);
     setError('');
+    setSuccess('');
     try {
       await api.signup(username, password);
-      // Auto-login after successful signup
-      const loginRes = await api.login(username, password);
-      if (loginRes.data?.access_token) {
-        login(loginRes.data.access_token);
+      setSuccess('Account created! Signing you in…');
+      // Auto-login after successful signup — in its own try/catch
+      // so a login failure doesn't show a "Signup failed" error.
+      let token = null;
+      try {
+        const loginRes = await api.login(username, password);
+        token = loginRes.data?.access_token ?? null;
+      } catch {
+        // Auto-login failed; will redirect to /login manually below
+      }
+      if (token) {
+        login(token);
         navigate('/dashboard');
+      } else {
+        navigate('/login', { state: { message: 'Account created! Please sign in.' } });
       }
     } catch (err) {
       setError(err.response?.data?.detail || 'Signup failed. The username might already be taken.');
@@ -52,6 +64,12 @@ const SignupPage = () => {
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[100px] -z-10"></div>
           
           <form onSubmit={handleSubmit} className="space-y-5">
+            {success && (
+              <div className="bg-green-50 border border-green-100 text-green-700 text-sm p-4 rounded-xl flex items-center gap-3">
+                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                {success}
+              </div>
+            )}
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm p-4 rounded-xl flex items-center gap-3 animate-shake">
                 <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>

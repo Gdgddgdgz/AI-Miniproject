@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 
 const LoginPage = () => {
+  const location = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [infoMessage] = useState(location.state?.message || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -44,6 +46,14 @@ const LoginPage = () => {
 
         <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#e3e8ee] p-8 sm:p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {infoMessage && (
+              <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm p-4 rounded-xl flex items-center gap-3">
+                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                {infoMessage}
+              </div>
+            )}
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm p-4 rounded-xl flex items-center gap-3">
                 <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -88,6 +98,25 @@ const LoginPage = () => {
                 <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
               ) : 'Sign In'}
             </button>
+
+            {/* Quick Demo Credentials Card */}
+            <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-3.5 flex items-center justify-between text-xs text-[#4f566b]">
+              <div>
+                <span className="font-bold text-[#1a1f36]">Demo Login:</span>{' '}
+                <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-[#e2e8f0] text-[#635bff]">admin</span> /{' '}
+                <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-[#e2e8f0] text-[#635bff]">admin</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername('admin');
+                  setPassword('admin');
+                }}
+                className="font-bold text-[#635bff] hover:text-[#4338ca] bg-white hover:bg-[#ede9fe] px-2.5 py-1 rounded-lg border border-[#c7d2fe] transition-colors shadow-xs"
+              >
+                Auto-fill ⚡
+              </button>
+            </div>
           </form>
 
           <div className="mt-8 pt-8 border-t border-[#e3e8ee] text-center">

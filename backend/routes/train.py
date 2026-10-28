@@ -19,6 +19,7 @@ from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold
 from utils.helpers import get_session
 from utils.auth import get_current_user
 from utils.history import save_model_to_history
+from de.medallion import lakehouse
 from ml.preprocessing import (
     prepare_features_and_target,
     get_image_columns,
@@ -285,6 +286,19 @@ def train_single_model(
     session["label_encoder"] = label_encoder
     session["raw_feature_columns"] = raw_features
 
+    # ── Gold Tier Feature Store Promotion ────────────────────────────────────
+    try:
+        gold_meta = lakehouse.promote_to_gold(
+            current_user,
+            df[raw_features],
+            df[body.target],
+            metadata={"model": body.model, "problem_type": problem_type},
+        )
+        session["de_gold_meta"] = gold_meta
+    except Exception as e:
+        print(f"Warning: Failed to snapshot Gold tier: {e}")
+        gold_meta = None
+
     try:
         save_model_to_history(
             model_name=body.model,
@@ -327,6 +341,11 @@ def train_single_model(
         "explanation": explanation,
         "raw_features": raw_features,
         "recommended_item": recommended_item,
+        "medallion": {
+            "bronze": session.get("de_bronze_meta"),
+            "silver": session.get("de_silver_meta"),
+            "gold": gold_meta or session.get("de_gold_meta"),
+        },
     }
 
 
@@ -428,6 +447,17 @@ def compare_models(
 
     if best_result:
         try:
+            gold_meta = lakehouse.promote_to_gold(
+                current_user,
+                df[b_raw],
+                df[body.target],
+                metadata={"model": best.get("model", "best"), "problem_type": problem_type},
+            )
+            session["de_gold_meta"] = gold_meta
+        except Exception as e:
+            print(f"Warning: Failed to snapshot Gold tier in compare: {e}")
+
+        try:
             save_model_to_history(
                 model_name=best["model"],
                 target=body.target,
@@ -447,5 +477,10 @@ def compare_models(
         "best_result": best_result,
         "summary": summary,
         "metric": metric_name,
+        "medallion": {
+            "bronze": session.get("de_bronze_meta"),
+            "silver": session.get("de_silver_meta"),
+            "gold": session.get("de_gold_meta"),
+        },
     }
 

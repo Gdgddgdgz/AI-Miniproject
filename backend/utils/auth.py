@@ -102,3 +102,28 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
         raise credentials_exception
     return username
 
+
+def seed_demo_user():
+    """Ensure demo user 'admin' with password 'admin' exists for quick demos and presentations."""
+    db = get_db_session()
+    try:
+        user = db.query(User).filter(User.username == "admin").first()
+        if not user:
+            user = User(
+                id=str(uuid.uuid4()),
+                username="admin",
+                hashed_password=get_password_hash("admin"),
+            )
+            db.add(user)
+            db.commit()
+            print("Demo account 'admin' created successfully.")
+        else:
+            user.hashed_password = get_password_hash("admin")
+            db.commit()
+            print("Demo account 'admin' password synced.")
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Could not seed admin demo user: {e}")
+    finally:
+        db.close()
+

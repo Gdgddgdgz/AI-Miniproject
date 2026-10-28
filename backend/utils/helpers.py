@@ -39,9 +39,13 @@ def reset_session(username: str) -> None:
 
 def df_to_records(df: pd.DataFrame, max_rows: int = 20) -> list:
     """Convert a DataFrame to a list of JSON-serialisable dicts."""
-    subset = df.head(max_rows).copy()
+    subset = df.head(max_rows).copy().astype(object)
     subset = subset.where(pd.notnull(subset), other=None)
-    return subset.to_dict(orient="records")
+    records = subset.to_dict(orient="records")
+    return [
+        {k: (None if pd.isna(v) else v) for k, v in r.items()}
+        for r in records
+    ]
 
 
 def column_dtypes(df: pd.DataFrame) -> Dict[str, str]:

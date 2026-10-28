@@ -30,6 +30,8 @@ const FileUploader = () => {
         dtypes: data.dtypes,
         imageColumns: data.image_columns || [],
         imageMap: data.image_map || {},
+        medallion: data.medallion || null,
+        qualityReport: data.quality_report || null,
       });
       setPreviewData(data.preview);
       setColumns(data.columns);

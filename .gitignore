@@ -22,13 +22,18 @@ yarn-error.log*
 
 # Models / Temp Data
 dummy_dataset.csv
+sample_wine.csv
 backend/data/*.json
 backend/data/*.pkl
 backend/data/automl_studio.db
+backend/automl_studio.db*
 backend/users.json
 backend/model_history.json
 backend/dataset/
 backend/tmp/
+backend/storage/
+*.log
+*.parquet
 
 # OS Files
 .DS_Store

@@ -1,10 +1,14 @@
 import os
+import sys
 import time
 import requests
 import pandas as pd
 import numpy as np
 
-BASE_URL = "http://localhost:8000"
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+BASE_URL = os.getenv("API_URL", "http://localhost:8001")
 test_username = None
 
 def run_tests():
@@ -107,7 +111,36 @@ def run_tests():
     assert "prediction" in res.json(), "Prediction response missing prediction key"
     print(f"    Predict successful, received prediction: {res.json()['prediction']}")
 
-    print("\n✅ All APIs and functionalities are working perfectly!")
+    # 12. Data Engineering: Quality Report
+    print("--> Testing /de/quality-report...")
+    res = session.get(f"{BASE_URL}/de/quality-report")
+    assert res.status_code == 200, f"Quality report failed: {res.text}"
+    qr = res.json()
+    assert "score" in qr and "assertions" in qr, "Quality report structure invalid"
+    print(f"    Data Quality score: {qr['score']}%, verdict: {qr.get('verdict_label')}")
+
+    # 13. Data Engineering: Lakehouse Metrics
+    print("--> Testing /de/lakehouse-metrics...")
+    res = session.get(f"{BASE_URL}/de/lakehouse-metrics")
+    assert res.status_code == 200, f"Lakehouse metrics failed: {res.text}"
+    assert res.json().get("has_silver") is True, "Silver tier missing"
+    assert res.json().get("has_gold") is True, "Gold tier missing"
+    print("    Lakehouse telemetry verified (Bronze, Silver, Gold active).")
+
+    # 14. Data Engineering: Parquet Downloads
+    print("--> Testing /de/download/silver...")
+    res = session.get(f"{BASE_URL}/de/download/silver")
+    assert res.status_code == 200, f"Silver download failed: {res.text}"
+    assert len(res.content) > 0, "Silver Parquet is empty"
+    print("    Silver Parquet download verified.")
+
+    print("--> Testing /de/download/gold...")
+    res = session.get(f"{BASE_URL}/de/download/gold")
+    assert res.status_code == 200, f"Gold download failed: {res.text}"
+    assert len(res.content) > 0, "Gold Parquet is empty"
+    print("    Gold Parquet download verified.")
+
+    print("\n✅ All ML and Data Engineering APIs are working perfectly!")
     return True
 
 

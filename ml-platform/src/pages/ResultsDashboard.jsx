@@ -6,6 +6,7 @@ import ComparisonTable from '../components/Metrics/ComparisonTable';
 import FeatureImportance from '../components/Charts/FeatureImportance';
 import ActualVsPredicted from '../components/Charts/ActualVsPredicted';
 import ConfusionMatrix from '../components/Charts/ConfusionMatrix';
+import MLPipelineBanner from '../components/Pipeline/MLPipelineBanner';
 
 import { api } from '../api/client';
 
@@ -16,7 +17,7 @@ const MemoActualVsPredicted = React.memo(ActualVsPredicted);
 const MemoConfusionMatrix = React.memo(ConfusionMatrix);
 
 const ResultsDashboard = () => {
-  const { trainResults, compareResults, problemType, datasetInfo } = useAppContext();
+  const { trainResults, compareResults, problemType, datasetInfo, testSize, advancedConfig } = useAppContext();
   const navigate = useNavigate();
 
   const [inputFeatures, setInputFeatures] = React.useState({});
@@ -24,7 +25,7 @@ const ResultsDashboard = () => {
   const [predictLoading, setPredictLoading] = React.useState(false);
   const [predictError, setPredictError] = React.useState(null);
 
-  if (!trainResults || !compareResults) {
+  if (!trainResults) {
     return (
       <div className="text-center py-20 mt-10 animate-slide-up">
         <h2 className="text-2xl font-bold mb-4 text-[#1a1f36]">No Results Available</h2>
@@ -34,7 +35,7 @@ const ResultsDashboard = () => {
   }
 
   const { metrics, model, explanation, predictions, feature_importances, raw_features, recommended_item } = trainResults;
-  const { summary } = compareResults;
+  const summary = compareResults?.summary || '';
 
   const featureKeys = raw_features || (datasetInfo?.columns ? datasetInfo.columns.filter(c => c !== trainResults.target) : []);
 
@@ -66,6 +67,17 @@ const ResultsDashboard = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-10 animate-slide-up pb-24">
+
+      {/* ML Pipeline Banner — what actually happened */}
+      <MLPipelineBanner
+        trainResults={trainResults}
+        compareResults={compareResults}
+        datasetInfo={datasetInfo}
+        advancedConfig={advancedConfig}
+        testSize={testSize}
+        problemType={problemType}
+      />
+
       
       {/* Header section Stripe Style */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-[#e3e8ee] pb-8 mt-6">
@@ -77,11 +89,17 @@ const ResultsDashboard = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <button onClick={() => navigate('/config')} className="btn-secondary px-6 py-2.5 shadow-sm font-semibold whitespace-nowrap">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+          <button onClick={() => navigate('/config')} className="btn-secondary px-4 py-2.5 shadow-sm font-semibold whitespace-nowrap text-sm">
             Adjust Configuration
           </button>
-          <button onClick={() => api.downloadModel()} className="btn-primary px-6 py-2.5 flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
+          <button onClick={() => api.downloadParquet('silver')} className="px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-all border border-emerald-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap text-sm">
+            <span>⚡ Silver (.parquet)</span>
+          </button>
+          <button onClick={() => api.downloadParquet('gold')} className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 font-bold hover:bg-amber-100 transition-all border border-amber-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap text-sm">
+            <span>📦 Gold Feature Store (.parquet)</span>
+          </button>
+          <button onClick={() => api.downloadModel()} className="btn-primary px-5 py-2.5 flex items-center justify-center gap-2 shadow-sm whitespace-nowrap text-sm">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             <span>Export Pipeline (.joblib)</span>
           </button>
