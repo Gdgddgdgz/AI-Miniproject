@@ -16,7 +16,6 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 from routes import upload, analyze, preprocess, train, download, dashboard, auth, predict, de_pipeline
-from utils.auth import seed_demo_user
 
 app = FastAPI(
     title="AutoML Studio API",
@@ -26,11 +25,8 @@ app = FastAPI(
         "run live predictions, download trained pipelines, and track history."
     ),
     version="2.0.0",
+    root_path=os.getenv("ROOT_PATH", ""),
 )
-
-@app.on_event("startup")
-def on_startup():
-    seed_demo_user()
 
 # ---------------------------------------------------------------------------
 # CORS

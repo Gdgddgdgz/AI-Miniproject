@@ -16,9 +16,9 @@ from typing import Dict, Any, Optional
 import pandas as pd
 
 
-BASE_STORAGE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "storage")
-)
+BASE_STORAGE_DIR = os.path.abspath(os.getenv(
+    "APP_STORAGE_DIR", os.path.join(os.path.dirname(__file__), "..", "storage")
+))
 
 
 def _ensure_dir(path: str) -> None:
@@ -35,7 +35,9 @@ class MedallionManager:
             _ensure_dir(d)
 
     def _safe_user(self, username: str) -> str:
-        return "".join(c for c in username if c.isalnum() or c in ("-", "_")).lower() or "default"
+        # Usernames are case-sensitive in the account database; hash the original
+        # value so distinct accounts cannot collide in on-disk lakehouse paths.
+        return hashlib.sha256(username.encode("utf-8")).hexdigest()
 
     # ── Bronze Tier ─────────────────────────────────────────────────────────
     def save_bronze(self, username: str, raw_bytes: bytes, filename: str, df: pd.DataFrame) -> Dict[str, Any]:

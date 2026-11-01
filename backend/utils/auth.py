@@ -22,6 +22,8 @@ from utils.db import get_db_session, User
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY must be set to a strong random value before starting the API.")
+if len(SECRET_KEY.encode("utf-8")) < 32:
+    raise RuntimeError("SECRET_KEY must contain at least 32 bytes.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
@@ -101,29 +103,4 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     if get_user(username) is None:
         raise credentials_exception
     return username
-
-
-def seed_demo_user():
-    """Ensure demo user 'admin' with password 'admin' exists for quick demos and presentations."""
-    db = get_db_session()
-    try:
-        user = db.query(User).filter(User.username == "admin").first()
-        if not user:
-            user = User(
-                id=str(uuid.uuid4()),
-                username="admin",
-                hashed_password=get_password_hash("admin"),
-            )
-            db.add(user)
-            db.commit()
-            print("Demo account 'admin' created successfully.")
-        else:
-            user.hashed_password = get_password_hash("admin")
-            db.commit()
-            print("Demo account 'admin' password synced.")
-    except Exception as e:
-        db.rollback()
-        print(f"Warning: Could not seed admin demo user: {e}")
-    finally:
-        db.close()
 

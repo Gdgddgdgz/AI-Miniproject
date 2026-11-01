@@ -7,14 +7,25 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine, Column, String, Float, DateTime, Text, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "automl_studio.db")
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+DB_PATH = os.path.abspath(os.getenv(
+    "SQLITE_PATH", os.path.join(os.path.dirname(__file__), "..", "data", "automl_studio.db")
+))
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(
+        "postgres://", "postgresql+psycopg://", 1
+    )
+elif SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(
+        "postgresql://", "postgresql+psycopg://", 1
+    )
 
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+engine_options = {"pool_pre_ping": True}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite:"):
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    engine_options["connect_args"] = {"check_same_thread": False}
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_options)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

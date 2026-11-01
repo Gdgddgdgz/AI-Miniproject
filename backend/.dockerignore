@@ -1,0 +1,10 @@
+.env
+.env.*
+__pycache__/
+*.py[cod]
+storage/
+data/*.db
+data/*.sqlite*
+test_*.py
+.venv/
+venv/

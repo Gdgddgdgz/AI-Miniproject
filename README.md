@@ -115,6 +115,35 @@ Set `CORS_ORIGINS` to the deployed frontend origin when hosting the UI and API o
 
 ---
 
+## 🚢 Single-host Deployment (Docker Compose)
+
+The repository includes a Docker Compose deployment with a React/Nginx frontend, FastAPI backend, PostgreSQL, and durable volumes for the database and uploaded/model data. The frontend proxies `/api` to the backend, so the browser uses one origin. Run it on a host with Docker Compose and put it behind an HTTPS reverse proxy or a hosting platform that provides TLS.
+
+```bash
+cp .env.deploy.example .env
+```
+
+Edit `.env` before starting. Set `SECRET_KEY` to at least 32 random bytes and `POSTGRES_PASSWORD` to a long URL-safe random password (letters, numbers, `_` and `-`). For example, generate each with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Keep `.env` private and out of source control.
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+Open `http://<host>:8080` for a local smoke check. For a public service, configure HTTPS and your domain in the host or reverse proxy, restrict inbound traffic to that proxy, and set `CORS_ORIGINS` to the public frontend origin. The API runs one worker because live training state is kept in a per-user persisted session file on the shared application volume. This setup supports one host; multi-host scaling requires shared session/object storage and a shared database. Back up both named volumes (`postgres_data` and `app_storage`) and define a retention policy for uploaded datasets and trained models.
+
+To stop without deleting data, run `docker compose down`. Do not use `docker compose down -v` unless you intend to permanently delete the database and uploaded/model data.
+
+The API no longer creates a default demo account. Users register through the signup page. The deployment does not include managed TLS, backups, monitoring, or hosting-provider setup; configure those at your host before inviting public users.
+
+### Vercel frontend + Render backend
+
+For this split deployment, deploy the React app as a Vercel project with the project root set to `ml-platform`, build command `npm run build`, and output directory `dist`. Deploy `render.yaml` as a Render Blueprint. The Blueprint creates the Docker API service and PostgreSQL database in Singapore and attaches a persistent disk for uploaded datasets, trained models, and lakehouse files. The API service and disk use a paid Render plan; Render's free web services have ephemeral filesystems.
+
+Deploy the frontend once to get its `*.vercel.app` origin. During Render Blueprint setup, provide that exact origin as `CORS_ORIGINS`. After Render finishes deploying, set Vercel's `VITE_API_URL` to the API's HTTPS `onrender.com` URL and redeploy the frontend. Keep the Render service and database in the same region. Add a custom frontend domain in Vercel only if desired, then update `CORS_ORIGINS` to include that origin.
+
+---
+
 ## 📡 API Reference Matrix
 
 | Endpoint | Method | Auth | Description |

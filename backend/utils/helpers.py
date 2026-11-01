@@ -2,15 +2,23 @@
 helpers.py – Multi-user session store and utility functions.
 """
 
+import os
+import hashlib
+import tempfile
+import threading
+import joblib
 import pandas as pd
 from typing import Any, Dict
 
 # ---------------------------------------------------------------------------
-# Multi-user in-memory session store
-# Maps username -> session_dict
-# NOTE: Data is lost on server restart. For production, use Redis or a DB.
+# Single-host session cache. Session values are also stored on the durable app volume.
 # ---------------------------------------------------------------------------
 _user_sessions: Dict[str, Dict[str, Any]] = {}
+_session_lock = threading.RLock()
+_SESSION_DIR = os.path.abspath(os.getenv(
+    "SESSION_STORAGE_DIR",
+    os.path.join(os.path.dirname(__file__), "..", "storage", "sessions"),
+))
 
 _EMPTY_SESSION = {
     "raw_df": None,           # pd.DataFrame uploaded by the user
@@ -25,16 +33,52 @@ _EMPTY_SESSION = {
 }
 
 
+class PersistentSession(dict):
+    """Session state persisted to the configured durable volume on each update."""
+    def __init__(self, username: str, values: Dict[str, Any]):
+        super().__init__(values)
+        self.username = username
+
+    def __setitem__(self, key, value):
+        with _session_lock:
+            super().__setitem__(key, value)
+            _persist_session(self.username, self)
+
+
+def _session_path(username: str) -> str:
+    user_id = hashlib.sha256(username.encode("utf-8")).hexdigest()
+    return os.path.join(_SESSION_DIR, user_id + ".joblib")
+
+
+def _persist_session(username: str, session: Dict[str, Any]) -> None:
+    os.makedirs(_SESSION_DIR, mode=0o700, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(prefix="session-", suffix=".tmp", dir=_SESSION_DIR)
+    os.close(fd)
+    try:
+        joblib.dump(dict(session), temp_path, compress=3)
+        os.replace(temp_path, _session_path(username))
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
 def get_session(username: str) -> Dict[str, Any]:
-    """Return the session dict for a specific user, creating it if needed."""
-    if username not in _user_sessions:
-        _user_sessions[username] = dict(_EMPTY_SESSION)
-    return _user_sessions[username]
+    """Return a user session, restoring it from durable storage when available."""
+    with _session_lock:
+        if username not in _user_sessions:
+            path = _session_path(username)
+            values = joblib.load(path) if os.path.isfile(path) else dict(_EMPTY_SESSION)
+            _user_sessions[username] = PersistentSession(username, values)
+        return _user_sessions[username]
 
 
 def reset_session(username: str) -> None:
     """Clear session data for a specific user."""
-    _user_sessions[username] = dict(_EMPTY_SESSION)
+    with _session_lock:
+        _user_sessions[username] = PersistentSession(username, dict(_EMPTY_SESSION))
+        path = _session_path(username)
+        if os.path.exists(path):
+            os.remove(path)
 
 
 def df_to_records(df: pd.DataFrame, max_rows: int = 20) -> list:
