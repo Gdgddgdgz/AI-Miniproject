@@ -140,7 +140,7 @@ The API no longer creates a default demo account. Users register through the sig
 
 For this split deployment, deploy the React app as a Vercel project with the project root set to `ml-platform`, build command `npm run build`, and output directory `dist`. Deploy `render.yaml` as a Render Blueprint. The Blueprint creates the Docker API service and PostgreSQL database in Singapore and attaches a persistent disk for uploaded datasets, trained models, and lakehouse files. The API service and disk use a paid Render plan; Render's free web services have ephemeral filesystems.
 
-Deploy the frontend once to get its `*.vercel.app` origin. During Render Blueprint setup, provide that exact origin as `CORS_ORIGINS`. After Render finishes deploying, set Vercel's `VITE_API_URL` to the API's HTTPS `onrender.com` URL and redeploy the frontend. Keep the Render service and database in the same region. Add a custom frontend domain in Vercel only if desired, then update `CORS_ORIGINS` to include that origin.
+The Render Blueprint allows `https://ai-miniproject.vercel.app` as `CORS_ORIGINS`. If you use a different Vercel URL or add a custom frontend domain, update that value to the exact browser origin. After Render finishes deploying, set Vercel's `VITE_API_URL` to the API's HTTPS `onrender.com` URL and redeploy the frontend. Keep the Render service and database in the same region.
 
 ---
 

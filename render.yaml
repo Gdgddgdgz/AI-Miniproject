@@ -23,7 +23,7 @@ services:
       - key: APP_STORAGE_DIR
         value: /var/data/lakehouse
       - key: CORS_ORIGINS
-        sync: false
+        value: https://ai-miniproject.vercel.app
 
 databases:
   - name: automl-studio-db
